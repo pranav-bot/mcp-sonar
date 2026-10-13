@@ -1,0 +1,15 @@
+# Example head-to-head suite when targets use different bindings.
+
+id: compare-echo
+description: Compare echo behavior across two binding aliases (customize tool names per server).
+
+scenarios:
+  - id: list_tools
+    calls:
+      primary:
+        tool: __list_tools__
+        arguments: {}
+      secondary:
+        tool: __list_tools__
+        arguments: {}
+    check: list_tools_nonempty

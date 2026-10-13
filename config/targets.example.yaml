@@ -1,0 +1,21 @@
+# Copy to config/targets.yaml and adjust commands/URLs for your MCP servers.
+
+targets:
+  everything-stdio:
+    label: MCP reference server (stdio)
+    binding: default
+    transport:
+      type: stdio
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-everything"
+
+  everything-http:
+    label: MCP reference server (HTTP) — start server separately if you use this target
+    binding: default
+    transport:
+      type: streamable_http
+      url: http://127.0.0.1:3000/mcp
+    auth:
+      bearer_env: MCP_BENCH_BEARER_TOKEN

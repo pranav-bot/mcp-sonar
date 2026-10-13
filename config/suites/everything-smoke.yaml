@@ -1,0 +1,23 @@
+id: everything-smoke
+description: Smoke tests for @modelcontextprotocol/server-everything (stdio or HTTP).
+
+scenarios:
+  - id: list_tools
+    description: Server exposes the standard everything tool set
+    calls:
+      default:
+        tool: __list_tools__
+        arguments: {}
+    check: list_tools_nonempty
+
+  - id: echo_roundtrip
+    description: echo tool returns the message
+    calls:
+      default:
+        tool: echo
+        arguments:
+          message: mcp-benchmarker
+    check:
+      name: contains_text
+      args:
+        text: mcp-benchmarker
