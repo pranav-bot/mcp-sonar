@@ -29,6 +29,8 @@ class ScenarioRunResult:
     scenario_id: str
     target_name: str
     binding: str
+    transport_kind: str
+    transport_endpoint: str
     transport_label: str
     functional_pass: bool
     functional_message: str
@@ -42,7 +44,10 @@ class ScenarioRunResult:
 class SingleTargetReport:
     suite_id: str
     target_name: str
+    target_label: str
     binding: str
+    transport_kind: str
+    transport_endpoint: str
     warmup: int
     iterations: int
     scenarios: list[ScenarioRunResult] = field(default_factory=list)
@@ -59,7 +64,13 @@ class CompareScenarioRow:
 class CompareReport:
     suite_id: str
     left_target: str
+    left_label: str
+    left_transport_kind: str
+    left_transport_endpoint: str
     right_target: str
+    right_label: str
+    right_transport_kind: str
+    right_transport_endpoint: str
     warmup: int
     iterations: int
     rows: list[CompareScenarioRow] = field(default_factory=list)

@@ -75,6 +75,17 @@ def default_targets_path() -> Path:
     return Path(__file__).resolve().parents[2] / "config" / "targets.yaml"
 
 
+def require_targets_path(path: Path | None) -> Path:
+    """Return an existing targets.yaml path or raise FileNotFoundError."""
+    config = path or default_targets_path()
+    if not config.is_file():
+        example = config.parent / "targets.example.yaml"
+        raise FileNotFoundError(
+            f"Targets file not found: {config}\nCopy {example} to {config} and configure your MCP servers."
+        )
+    return config
+
+
 def resolve_target(config: TargetsFile, name: str) -> tuple[str, TargetConfig]:
     if name not in config.targets:
         known = ", ".join(sorted(config.targets))

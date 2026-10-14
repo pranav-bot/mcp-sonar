@@ -9,6 +9,8 @@ from rich.console import Console
 from rich.table import Table
 
 from mcp_benchmarker.core.types import CompareReport, ReportFormat, ScenarioRunResult, SingleTargetReport
+from mcp_benchmarker.display import print_benchmark_target_header, print_compare_targets_header
+from mcp_benchmarker.transport import KIND_LABEL, TransportInfo
 
 
 def _scenario_row_cells(result: ScenarioRunResult) -> list[str]:
@@ -25,11 +27,15 @@ def _scenario_row_cells(result: ScenarioRunResult) -> list[str]:
 
 
 def print_single_report(report: SingleTargetReport) -> None:
-    console = Console()
-    console.print(
-        f"\n[bold]Suite[/bold] {report.suite_id}  [bold]Target[/bold] {report.target_name} "
-        f"(binding={report.binding})"
+    transport = TransportInfo(kind=report.transport_kind, endpoint=report.transport_endpoint)
+    print_benchmark_target_header(
+        report.target_name,
+        report.target_label,
+        transport,
+        binding=report.binding,
+        suite_id=report.suite_id,
     )
+    console = Console()
     table = Table(title="Scenario results")
     table.add_column("Scenario")
     table.add_column("Functional")
@@ -45,11 +51,21 @@ def print_single_report(report: SingleTargetReport) -> None:
 
 
 def print_compare_report(report: CompareReport) -> None:
-    console = Console()
-    console.print(
-        f"\n[bold]Suite[/bold] {report.suite_id}  "
-        f"[bold]Left[/bold] {report.left_target}  [bold]Right[/bold] {report.right_target}"
+    left_transport = TransportInfo(kind=report.left_transport_kind, endpoint=report.left_transport_endpoint)
+    right_transport = TransportInfo(
+        kind=report.right_transport_kind,
+        endpoint=report.right_transport_endpoint,
     )
+    print_compare_targets_header(
+        report.suite_id,
+        report.left_target,
+        report.left_label,
+        left_transport,
+        report.right_target,
+        report.right_label,
+        right_transport,
+    )
+    console = Console()
     table = Table(title="Head-to-head (p50 ms)")
     table.add_column("Scenario")
     table.add_column("Left functional")
@@ -85,12 +101,24 @@ def write_json_report(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(_dataclass_to_json(payload), indent=2) + "\n", encoding="utf-8")
 
 
+def _transport_md_line(kind: str, endpoint: str) -> str:
+    label = KIND_LABEL.get(kind, kind)
+    return f"- Transport: **{label}** — `{endpoint}`"
+
+
+def _named_transport_md(role: str, name: str, kind: str, endpoint: str) -> str:
+    label = KIND_LABEL.get(kind, kind)
+    return f"- {role} ({name}): **{label}** — `{endpoint}`"
+
+
 def write_markdown_single(path: Path, report: SingleTargetReport) -> None:
     lines = [
         f"# MCP benchmark: {report.target_name}",
         "",
         f"- Suite: `{report.suite_id}`",
+        f"- Label: {report.target_label}",
         f"- Binding: `{report.binding}`",
+        _transport_md_line(report.transport_kind, report.transport_endpoint),
         f"- Warmup: {report.warmup}, iterations: {report.iterations}",
         "",
         "| Scenario | Functional | p50 ms | p95 ms | Note |",
@@ -113,6 +141,18 @@ def write_markdown_compare(path: Path, report: CompareReport) -> None:
         f"# MCP compare: {report.left_target} vs {report.right_target}",
         "",
         f"- Suite: `{report.suite_id}`",
+        _named_transport_md(
+            "Left",
+            report.left_label,
+            report.left_transport_kind,
+            report.left_transport_endpoint,
+        ),
+        _named_transport_md(
+            "Right",
+            report.right_label,
+            report.right_transport_kind,
+            report.right_transport_endpoint,
+        ),
         f"- Warmup: {report.warmup}, iterations: {report.iterations}",
         "",
         "| Scenario | Left | Left p50 | Right | Right p50 |",

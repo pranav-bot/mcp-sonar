@@ -4,10 +4,10 @@ Open-source toolkit to **benchmark**, **compare**, and **interact** with [Model 
 
 - **One server:** run a suite and collect latency + payload stats  
 - **Two servers:** same suite, side-by-side comparison  
-- **Ad hoc:** list tools and call any tool from the CLI  
+- **Ad hoc:** list/describe/call tools, inspect server info, list resources/prompts (CLI, no LLM)  
 - **Extensible:** drop YAML suites under `config/suites/`, or add Python suites in `src/mcp_benchmarker/suite/`
 
-Transports: **stdio** (subprocess) and **streamable HTTP** (with optional bearer token).
+Transports: **stdio** (subprocess) and **streamable HTTP** (with optional bearer token). Every CLI command and benchmark report shows which transport and endpoint you are using (stdio vs streamable HTTP are always labeled explicitly).
 
 ## Install
 
@@ -65,10 +65,17 @@ Checks: `not_error`, `expect_error`, `list_tools_nonempty`, `contains_text`, `js
 mcp-bench list-targets --config config/targets.yaml
 mcp-bench list-suites --config config/targets.yaml
 
-# Interact
+# Interact (no LLM — direct MCP tool calls)
 mcp-bench tools list --config config/targets.yaml --target everything-stdio
+mcp-bench tools describe --config config/targets.yaml --target everything-stdio --tool echo
+mcp-bench tools info --config config/targets.yaml --target everything-stdio
 mcp-bench tools call --config config/targets.yaml --target everything-stdio \
   --tool echo --args '{"message":"hello"}'
+
+# Same interaction via flat CLI (mcp-interact)
+mcp-interact list-tools --config config/targets.yaml --target everything-stdio
+mcp-interact call echo --config config/targets.yaml --target everything-stdio \
+  --args '{"message":"hello"}'
 
 # Benchmark one server
 mcp-bench run --config config/targets.yaml \

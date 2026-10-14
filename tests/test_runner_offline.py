@@ -8,21 +8,26 @@ import pytest
 from mcp_benchmarker.core.runner import run_scenario_on_target
 from mcp_benchmarker.core.types import ToolOutcome
 from mcp_benchmarker.suite.registry import get_suite
+from mcp_benchmarker.transport import TransportInfo
 
 
 @dataclass
 class _FakeTarget:
     name: str
     binding: str
-    transport_label: str
+    transport: TransportInfo
     _responses: dict[str, ToolOutcome]
+
+    @property
+    def label(self) -> str:
+        return self.name
 
     @classmethod
     def build(cls, responses: dict[str, ToolOutcome]) -> _FakeTarget:
         return cls(
             name="fake",
             binding="default",
-            transport_label="fake",
+            transport=TransportInfo(kind="stdio", endpoint="fake-cmd"),
             _responses=responses,
         )
 

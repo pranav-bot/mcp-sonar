@@ -15,6 +15,14 @@ from mcp_benchmarker.suite.registry import Suite
 from mcp_benchmarker.target import ConnectedTarget
 
 
+def _transport_fields(target: ConnectedTarget) -> dict[str, str]:
+    return {
+        "transport_kind": target.transport.kind,
+        "transport_endpoint": target.transport.endpoint,
+        "transport_label": target.transport.summary(),
+    }
+
+
 async def _invoke_resolved(target: ConnectedTarget, resolved: ResolvedStep) -> Any:
     if resolved.tool_name == "__list_tools__":
         names = await target.list_tools()
@@ -50,7 +58,7 @@ async def run_scenario_on_target(
             scenario_id=step_id,
             target_name=target.name,
             binding=target.binding,
-            transport_label=target.transport_label,
+            **_transport_fields(target),
             functional_pass=True,
             functional_message=resolved.skip_reason or "skipped",
             timing=timing_stats_ms([]),
@@ -84,7 +92,7 @@ async def run_scenario_on_target(
         scenario_id=step_id,
         target_name=target.name,
         binding=target.binding,
-        transport_label=target.transport_label,
+        **_transport_fields(target),
         functional_pass=functional_pass,
         functional_message=functional_message,
         timing=timing_stats_ms(durations),
@@ -103,7 +111,10 @@ async def run_suite_on_target(
     report = SingleTargetReport(
         suite_id=suite.id,
         target_name=target.name,
+        target_label=target.label,
         binding=target.binding,
+        transport_kind=target.transport.kind,
+        transport_endpoint=target.transport.endpoint,
         warmup=warmup,
         iterations=iterations,
     )
@@ -132,7 +143,13 @@ async def compare_targets(
     report = CompareReport(
         suite_id=suite.id,
         left_target=left.name,
+        left_label=left.label,
+        left_transport_kind=left.transport.kind,
+        left_transport_endpoint=left.transport.endpoint,
         right_target=right.name,
+        right_label=right.label,
+        right_transport_kind=right.transport.kind,
+        right_transport_endpoint=right.transport.endpoint,
         warmup=warmup,
         iterations=iterations,
     )
