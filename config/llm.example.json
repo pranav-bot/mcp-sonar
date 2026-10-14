@@ -1,0 +1,34 @@
+{
+  "default": "anthropic-dev",
+  "configs": {
+    "anthropic-dev": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "api_key_env": "ANTHROPIC_API_KEY"
+    },
+    "openai-dev": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "api_key_env": "OPENAI_API_KEY"
+    },
+    "vertex-gemini": {
+      "provider": "vertexai",
+      "model": "gemini-2.5-flash",
+      "project_env": "GOOGLE_CLOUD_PROJECT",
+      "location": "us-central1"
+    },
+    "vertex-claude": {
+      "provider": "anthropic-vertex",
+      "model": "claude-sonnet-4-20250514",
+      "project_env": "GOOGLE_CLOUD_PROJECT",
+      "location": "us-east5"
+    },
+    "models-corps-sandbox": {
+      "provider": "models-corps",
+      "model": "claude-sonnet-4-20250514",
+      "base_url_env": "MODELS_CORPS_BASE_URL",
+      "api_key_env": "MODELS_CORPS_API_KEY",
+      "rate_limit_per_minute": 6
+    }
+  }
+}
