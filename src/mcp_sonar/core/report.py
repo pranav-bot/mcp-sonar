@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from mcp_sonar.core.types import CompareReport, ReportFormat, ScenarioRunResult, SingleTargetReport
@@ -26,7 +27,26 @@ def _scenario_row_cells(result: ScenarioRunResult) -> list[str]:
     ]
 
 
-def print_single_report(report: SingleTargetReport) -> None:
+def print_scenario_details(report: SingleTargetReport) -> None:
+    console = Console()
+    for scenario in report.scenarios:
+        if not scenario.detail:
+            continue
+        console.print()
+        console.print(Panel(scenario.detail, title=scenario.scenario_id, expand=False))
+
+
+def print_compare_scenario_details(report: CompareReport) -> None:
+    console = Console()
+    for row in report.rows:
+        for label, side in (("left", row.left), ("right", row.right)):
+            if side is None or not side.detail:
+                continue
+            console.print()
+            console.print(Panel(side.detail, title=f"{row.scenario_id} ({label})", expand=False))
+
+
+def print_single_report(report: SingleTargetReport, *, verbose: bool = False) -> None:
     transport = TransportInfo(kind=report.transport_kind, endpoint=report.transport_endpoint)
     print_benchmark_target_header(
         report.target_name,
@@ -48,9 +68,11 @@ def print_single_report(report: SingleTargetReport) -> None:
         cells = _scenario_row_cells(scenario)
         table.add_row(scenario.scenario_id, *cells)
     console.print(table)
+    if verbose or report.suite_id == "mcp-lens":
+        print_scenario_details(report)
 
 
-def print_compare_report(report: CompareReport) -> None:
+def print_compare_report(report: CompareReport, *, verbose: bool = False) -> None:
     left_transport = TransportInfo(kind=report.left_transport_kind, endpoint=report.left_transport_endpoint)
     right_transport = TransportInfo(
         kind=report.right_transport_kind,
@@ -87,6 +109,8 @@ def print_compare_report(report: CompareReport) -> None:
             left.functional_message[:40],
         )
     console.print(table)
+    if verbose or report.suite_id == "mcp-lens":
+        print_compare_scenario_details(report)
 
 
 def _dataclass_to_json(obj: Any) -> Any:
@@ -133,6 +157,16 @@ def write_markdown_single(path: Path, report: SingleTargetReport) -> None:
             f"| {scenario.scenario_id} | {status} | {scenario.timing.p50_ms:.1f} | "
             f"{scenario.timing.p95_ms:.1f} | {scenario.functional_message} |"
         )
+    detail_blocks = [s for s in report.scenarios if s.detail]
+    if detail_blocks:
+        lines.extend(["", "## Scenario details", ""])
+        for scenario in detail_blocks:
+            lines.append(f"### {scenario.scenario_id}")
+            lines.append("")
+            lines.append("```text")
+            lines.append(scenario.detail or "")
+            lines.append("```")
+            lines.append("")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

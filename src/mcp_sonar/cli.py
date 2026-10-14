@@ -16,6 +16,7 @@ from mcp_sonar.cli_help import (
     LENS_MODE_HELP,
     SKIP_FUNCTIONAL_HELP,
     SUITE_HELP,
+    VERBOSE_RUN_HELP,
     TOOLS_GROUP_HELP,
     WARMUP_HELP,
     with_config_option,
@@ -422,6 +423,7 @@ def tools_prompts_list_cmd(target: str, config_path: Path | None, fmt: str) -> N
     help=REPORT_FORMAT_HELP,
 )
 @click.option("--skip-functional", is_flag=True, help=SKIP_FUNCTIONAL_HELP)
+@click.option("--verbose", "-v", is_flag=True, help=VERBOSE_RUN_HELP)
 @click.option(
     "--lens-mode",
     type=click.Choice(["static", "llm", "both"]),
@@ -437,6 +439,7 @@ def run_cmd(
     out_path: Path | None,
     fmt: ReportFormat,
     skip_functional: bool,
+    verbose: bool,
     lens_mode: str | None,
 ) -> None:
     """\b
@@ -467,11 +470,12 @@ def run_cmd(
                     warmup=warmup,
                     iterations=iterations,
                     skip_functional=skip_functional,
+                    include_all_responses=verbose,
                 )
         finally:
             if lens_token is not None:
                 reset_lens_mode(lens_token)
-        print_single_report(report)
+        print_single_report(report, verbose=verbose)
         emit_report(out_path, fmt, report)
         if any(not s.functional_pass and not s.skipped for s in report.scenarios):
             raise SystemExit(1)
@@ -504,6 +508,7 @@ def run_cmd(
     help=REPORT_FORMAT_HELP,
 )
 @click.option("--skip-functional", is_flag=True, help=SKIP_FUNCTIONAL_HELP)
+@click.option("--verbose", "-v", is_flag=True, help=VERBOSE_RUN_HELP)
 @click.option(
     "--lens-mode",
     type=click.Choice(["static", "llm", "both"]),
@@ -520,6 +525,7 @@ def compare_cmd(
     out_path: Path | None,
     fmt: ReportFormat,
     skip_functional: bool,
+    verbose: bool,
     lens_mode: str | None,
 ) -> None:
     """\b
@@ -553,11 +559,12 @@ def compare_cmd(
                         warmup=warmup,
                         iterations=iterations,
                         skip_functional=skip_functional,
+                        include_all_responses=verbose,
                     )
         finally:
             if lens_token is not None:
                 reset_lens_mode(lens_token)
-        print_compare_report(report)
+        print_compare_report(report, verbose=verbose)
         emit_report(out_path, fmt, report)
         failed = False
         for row in report.rows:

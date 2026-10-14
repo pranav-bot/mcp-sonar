@@ -38,6 +38,7 @@ class ScenarioRunResult:
     success_rate: float
     skipped: bool = False
     skip_reason: str | None = None
+    detail: str | None = None
 
 
 @dataclass

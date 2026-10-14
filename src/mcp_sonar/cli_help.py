@@ -63,6 +63,12 @@ SKIP_FUNCTIONAL_HELP = (
     "Useful when comparing transports on the same machine."
 )
 
+VERBOSE_RUN_HELP = (
+    "After the summary table, print full last tool response for each scenario. "
+    "The mcp-lens suite always prints its text report; use this flag for other suites. "
+    "Scenario detail is included in --out markdown/json when captured."
+)
+
 LENS_MODE_HELP = (
     "For suite mcp-lens only: run static rules, LLM checks, or both (default: both). "
     "Requires `uv sync --extra mcp-lens`; LLM mode needs MCP Lens llm.json."

@@ -18,6 +18,20 @@ from mcp_sonar.target import ConnectedTarget
 _lens_tool_cache: dict[str, list[dict]] = {}
 
 
+def _scenario_detail(outcome: Any, *, include_all_responses: bool) -> str | None:
+    if outcome is None:
+        return None
+    text = (getattr(outcome, "text", None) or "").strip()
+    if not text:
+        return None
+    tool_name = getattr(outcome, "tool_name", "")
+    if str(tool_name).startswith("__mcp_lens_"):
+        return text
+    if include_all_responses:
+        return text
+    return None
+
+
 def clear_lens_tool_cache() -> None:
     _lens_tool_cache.clear()
 
@@ -101,6 +115,7 @@ async def run_scenario_on_target(
     warmup: int,
     iterations: int,
     skip_functional: bool,
+    include_all_responses: bool = False,
 ) -> ScenarioRunResult:
     step = next((s for s in suite.steps() if s.id == step_id), None)
     if step is None:
@@ -151,6 +166,7 @@ async def run_scenario_on_target(
         functional_message=functional_message,
         timing=timing_stats_ms(durations),
         success_rate=successes / measured,
+        detail=_scenario_detail(last_outcome, include_all_responses=include_all_responses),
     )
 
 
@@ -161,6 +177,7 @@ async def run_suite_on_target(
     warmup: int,
     iterations: int,
     skip_functional: bool,
+    include_all_responses: bool = False,
 ) -> SingleTargetReport:
     if suite.id == "mcp-lens":
         clear_lens_tool_cache()
@@ -182,6 +199,7 @@ async def run_suite_on_target(
             warmup=warmup,
             iterations=iterations,
             skip_functional=skip_functional,
+            include_all_responses=include_all_responses,
         )
         report.scenarios.append(result)
     return report
@@ -195,6 +213,7 @@ async def compare_targets(
     warmup: int,
     iterations: int,
     skip_functional: bool,
+    include_all_responses: bool = False,
 ) -> CompareReport:
     if suite.id == "mcp-lens":
         clear_lens_tool_cache()
@@ -219,6 +238,7 @@ async def compare_targets(
             warmup=warmup,
             iterations=iterations,
             skip_functional=skip_functional,
+            include_all_responses=include_all_responses,
         )
         right_result = await run_scenario_on_target(
             right,
@@ -227,6 +247,7 @@ async def compare_targets(
             warmup=warmup,
             iterations=iterations,
             skip_functional=skip_functional,
+            include_all_responses=include_all_responses,
         )
         report.rows.append(CompareScenarioRow(scenario_id=step.id, left=left_result, right=right_result))
     return report

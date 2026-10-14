@@ -41,7 +41,7 @@ sonar run --config config/targets.yaml --target local-http --suite mcp-lens --le
 sonar run --config config/targets.yaml --target local-http --suite mcp-lens --lens-mode both
 ```
 
-`--lens-mode` defaults to `both` for `mcp-lens`. LLM mode requires MCP Lens `llm.json` (see upstream docs).
+`--lens-mode` defaults to `both` for `mcp-lens`. LLM mode requires MCP Lens `llm.json` (see upstream docs). The full Lens text report prints after the summary table; use `--verbose` on other suites to show last tool responses, or `--out` for markdown/json with a `detail` field.
 
 **YAML:** any `config/suites/*.yaml` is loaded automatically when you pass `--config config/targets.yaml`.
 
