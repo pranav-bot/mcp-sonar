@@ -41,7 +41,24 @@ sonar run --config config/targets.yaml --target local-http --suite mcp-lens --le
 sonar run --config config/targets.yaml --target local-http --suite mcp-lens --lens-mode both
 ```
 
-`--lens-mode` defaults to `both` for `mcp-lens`. LLM mode requires MCP Lens `llm.json` (see upstream docs). The full Lens text report prints after the summary table; use `--verbose` on other suites to show last tool responses, or `--out` for markdown/json with a `detail` field.
+`--lens-mode` defaults to `both` for `mcp-lens`. The full Lens text report prints after the summary table; use `--verbose` on other suites to show last tool responses, or `--out` for markdown/json with a `detail` field.
+
+### LLM providers (`llm.json`)
+
+Copy `config/llm.example.json` to `config/llm.json` (or `llm.json` in the project root) and set `default` to a named config. API keys and gateway URLs use `*_env` fields (never commit secrets).
+
+| `provider` | SDK extra |
+|------------|-----------|
+| `anthropic` | `uv sync --extra llm-anthropic` |
+| `openai` | `uv sync --extra llm-openai` |
+| `vertexai` (Gemini) | `uv sync --extra llm-vertex` |
+| `anthropic-vertex` | `uv sync --extra llm-anthropic-vertex` |
+| `models-corps` | httpx only; Vertex-style `rawPredict` URLs + Bearer token (`base_url_env`, `api_key_env`). **Sandbox rate limit: 6 requests/minute** (enforced client-side; default `rate_limit_per_minute`). |
+
+```bash
+sonar llm list --config config/llm.json
+export MCP_SONAR_LLM_CONFIG=config/llm.json   # optional override
+```
 
 **YAML:** any `config/suites/*.yaml` is loaded automatically when you pass `--config config/targets.yaml`.
 

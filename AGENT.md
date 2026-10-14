@@ -70,6 +70,12 @@ File-based calls live in `interactor/args_file.py` and `interactor/tool_template
 - Functional check: `check_lens_gate` in `checks/builtin.py`.
 - Do not vendor MCP Lens; keep it as a git-sourced optional extra in `pyproject.toml`.
 
+### LLM providers (`src/mcp_sonar/llm/`)
+
+- Config: `config/llm.example.json` → user’s gitignored `config/llm.json` or `MCP_SONAR_LLM_CONFIG`.
+- `registry.build_adapter()` delegates `anthropic`, `openai`, `vertexai`, `anthropic-vertex` to MCP Lens adapters; `models-corps` is implemented in-tree (Vertex `rawPredict` + Bearer) with **client-side** `MinuteRateLimiter` (default 6/min, sandbox tier).
+- Do not commit real gateway hostnames or API keys; use `base_url_env` / `api_key_env` in examples only.
+
 ## Before you finish
 
 ```bash
