@@ -69,13 +69,22 @@ sonar list-suites --config config/targets.yaml
 sonar tools list --config config/targets.yaml --target everything-stdio
 sonar tools describe --config config/targets.yaml --target everything-stdio --tool echo
 sonar tools info --config config/targets.yaml --target everything-stdio
+
+# One-off JSON call
 sonar tools call --config config/targets.yaml --target everything-stdio \
   --tool echo --args '{"message":"hello"}'
 
-# Shorthand (same as `sonar tools …`)
-sonar list-tools --config config/targets.yaml --target everything-stdio
-sonar call echo --config config/targets.yaml --target everything-stdio \
-  --args '{"message":"hello"}'
+# Typed input form (YAML): generate, edit, invoke
+sonar tools template --config config/targets.yaml --target local-http \
+  --tool explore_schema -o explore_schema.input.yaml
+# edit explore_schema.input.yaml, then:
+sonar tools invoke --config config/targets.yaml --args-file explore_schema.input.yaml
+
+# Bulk calls from a file
+sonar tools batch-template --tool explore_schema --target local-http -o calls.batch.yaml
+sonar tools batch --config config/targets.yaml --file calls.batch.yaml
+
+# Shorthand: list-tools, template, invoke, call, batch, …
 
 # Benchmark one server
 sonar run --config config/targets.yaml \

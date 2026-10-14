@@ -29,7 +29,24 @@ FORMAT_LIST_HELP = (
     "Output shape: table (default), names (one item per line), or json."
 )
 
-ARGS_JSON_HELP = 'Tool arguments as a single JSON object, e.g. \'{"message":"hello"}\'.'
+FORMAT_DESCRIBE_HELP = (
+    "rich: formatted description and parameter table (default); "
+    "json: full tool definition and JSON Schema for scripts."
+)
+
+ARGS_JSON_HELP = (
+    'Tool arguments as a JSON object. Merged on top of --args-file when both are set.'
+)
+
+ARGS_FILE_HELP = (
+    "YAML or JSON file with tool, optional target, and an arguments mapping. "
+    "Generate a typed form with `sonar tools template`."
+)
+
+BATCH_FILE_HELP = (
+    "YAML or JSON batch file: optional top-level target, and calls: "
+    "[{tool, arguments, target?}, ...]. Use `sonar tools batch-template` for a starter file."
+)
 
 WARMUP_HELP = "Iterations executed before timing starts (discarded from latency stats)."
 
@@ -46,7 +63,6 @@ SKIP_FUNCTIONAL_HELP = (
     "Useful when comparing transports on the same machine."
 )
 
-
 def with_config_option(*, required: bool = False) -> Callable[[F], F]:
     def decorator(f: F) -> F:
         return click.option(
@@ -61,9 +77,9 @@ def with_config_option(*, required: bool = False) -> Callable[[F], F]:
     return decorator
 
 
-def with_target_option() -> Callable[[F], F]:
+def with_target_option(*, required: bool = True) -> Callable[[F], F]:
     def decorator(f: F) -> F:
-        return click.option("--target", required=True, help=TARGET_HELP)(f)
+        return click.option("--target", required=required, help=TARGET_HELP)(f)
 
     return decorator
 
@@ -77,6 +93,20 @@ def with_tools_format_option() -> Callable[[F], F]:
             default="table",
             show_default=True,
             help=FORMAT_TOOLS_HELP,
+        )(f)
+
+    return decorator
+
+
+def with_describe_format_option() -> Callable[[F], F]:
+    def decorator(f: F) -> F:
+        return click.option(
+            "--format",
+            "fmt",
+            type=click.Choice(["rich", "json"]),
+            default="rich",
+            show_default=True,
+            help=FORMAT_DESCRIBE_HELP,
         )(f)
 
     return decorator

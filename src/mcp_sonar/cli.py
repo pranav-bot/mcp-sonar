@@ -6,7 +6,9 @@ from pathlib import Path
 import click
 
 from mcp_sonar.cli_help import (
+    ARGS_FILE_HELP,
     ARGS_JSON_HELP,
+    BATCH_FILE_HELP,
     ITERATIONS_HELP,
     MAIN_EPILOG,
     OUT_HELP,
@@ -16,6 +18,7 @@ from mcp_sonar.cli_help import (
     TOOLS_GROUP_HELP,
     WARMUP_HELP,
     with_config_option,
+    with_describe_format_option,
     with_list_format_option,
     with_target_option,
     with_tools_format_option,
@@ -36,10 +39,13 @@ from mcp_sonar.display import print_targets_table
 from mcp_sonar.interactor.tools_cmds import (
     run_prompts_list,
     run_resources_list,
+    run_tools_batch,
     run_tools_call,
     run_tools_describe,
     run_tools_info,
     run_tools_list,
+    run_tools_template,
+    write_batch_example,
 )
 from mcp_sonar.suite.registry import ensure_suites_loaded, get_suite, list_suites
 from mcp_sonar.target import connect_target
@@ -83,7 +89,7 @@ def main() -> None:
       compare    Benchmark two targets side by side
 
     Shorthand commands (same as `sonar tools …`):
-      list-tools, describe-tool, call, info, list-resources, list-prompts
+      list-tools, describe-tool, invoke, call, template, batch, info, …
     """
 
 
@@ -154,15 +160,17 @@ def tools_list_cmd(target: str, config_path: Path | None, fmt: str) -> None:
     help="Tool name exactly as returned by `sonar tools list --format names`.",
 )
 @with_config_option()
-def tools_describe_cmd(target: str, tool_name: str, config_path: Path | None) -> None:
+@with_describe_format_option()
+def tools_describe_cmd(target: str, tool_name: str, config_path: Path | None, fmt: str) -> None:
     """\b
-    Print one tool's description and input JSON Schema as JSON.
+    Show a tool's description and parameters in a readable layout.
 
-    Useful for crafting `sonar tools call --args …` without an LLM.
+    Default output is a Rich table of arguments (types, defaults, descriptions).
+    Use --format json for the raw MCP tool definition and JSON Schema.
     """
 
     async def _run() -> None:
-        await run_tools_describe(target, tool_name, config_path)
+        await run_tools_describe(target, tool_name, config_path, fmt)  # type: ignore[arg-type]
 
     asyncio.run(_run())
 
@@ -185,27 +193,165 @@ def tools_info_cmd(target: str, config_path: Path | None) -> None:
 
 
 @tools_group.command("call")
-@with_target_option()
+@with_target_option(required=False)
 @click.option(
     "--tool",
     "tool_name",
-    required=True,
-    help="Tool name to invoke on the server.",
+    required=False,
+    help="Tool name (required unless set in --args-file).",
 )
-@click.option("--args", "args_json", default="{}", help=ARGS_JSON_HELP)
+@click.option("--args", "args_json", default=None, help=ARGS_JSON_HELP)
+@click.option(
+    "--args-file",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help=ARGS_FILE_HELP,
+)
 @with_config_option()
-def tools_call_cmd(target: str, tool_name: str, args_json: str, config_path: Path | None) -> None:
+def tools_call_cmd(
+    target: str | None,
+    tool_name: str | None,
+    args_json: str | None,
+    args_file: Path | None,
+    config_path: Path | None,
+) -> None:
     """\b
-    Call one MCP tool and print the text result to stdout.
+    Call one MCP tool and print the result (no LLM).
 
-    Exits with code 1 if the tool reports an error. Transport and target are
-    printed on stderr before the call.
+    Pass JSON with --args, or edit a form file from `sonar tools template` and
+    pass --args-file. CLI --target and --tool override values in the file.
     """
 
     async def _run() -> None:
-        await run_tools_call(target, tool_name, args_json, config_path)
+        await run_tools_call(
+            target,
+            tool_name,
+            config_path,
+            args_json=args_json,
+            args_file=args_file,
+        )
 
     asyncio.run(_run())
+
+
+@tools_group.command("invoke")
+@click.option(
+    "--args-file",
+    required=True,
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    help=ARGS_FILE_HELP,
+)
+@click.option("--tool", "tool_name", default=None, help="Override tool name from the file.")
+@with_target_option(required=False)
+@click.option("--args", "args_json", default=None, help=ARGS_JSON_HELP)
+@with_config_option()
+def tools_invoke_cmd(
+    args_file: Path,
+    tool_name: str | None,
+    target: str | None,
+    args_json: str | None,
+    config_path: Path | None,
+) -> None:
+    """\b
+    Run one tool call from an args file (primary no-LLM workflow).
+
+    Create the file with `sonar tools template`, edit arguments, then invoke.
+    """
+
+    async def _run() -> None:
+        await run_tools_call(
+            target,
+            tool_name,
+            config_path,
+            args_json=args_json,
+            args_file=args_file,
+        )
+
+    asyncio.run(_run())
+
+
+@tools_group.command("template")
+@with_target_option()
+@click.option("--tool", "tool_name", required=True, help="Tool to build an input form for.")
+@with_config_option()
+@click.option(
+    "-o",
+    "--out",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=None,
+    help="Write the form to this path (default: print to stdout).",
+)
+def tools_template_cmd(
+    target: str,
+    tool_name: str,
+    config_path: Path | None,
+    out: Path | None,
+) -> None:
+    """\b
+    Write a YAML input form: argument keys, types in comments, and defaults.
+
+    Edit the form, then `sonar tools invoke --args-file <path>`.
+    """
+
+    async def _run() -> None:
+        await run_tools_template(target, tool_name, config_path, out)
+
+    asyncio.run(_run())
+
+
+@tools_group.command("batch")
+@click.option(
+    "--file",
+    "batch_file",
+    required=True,
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    help=BATCH_FILE_HELP,
+)
+@with_target_option(required=False)
+@with_config_option()
+@click.option(
+    "--continue-on-error",
+    is_flag=True,
+    help="Run remaining calls after a tool error (still exits 1 at the end if any failed).",
+)
+def tools_batch_cmd(
+    batch_file: Path,
+    target: str | None,
+    config_path: Path | None,
+    continue_on_error: bool,
+) -> None:
+    """\b
+    Run many tool calls from one batch file (no LLM).
+
+    Each entry under calls: must include tool and arguments; target is optional
+    if set at the top level or with --target.
+    """
+
+    async def _run() -> None:
+        await run_tools_batch(
+            batch_file,
+            config_path,
+            target,
+            continue_on_error=continue_on_error,
+        )
+
+    asyncio.run(_run())
+
+
+@tools_group.command("batch-template")
+@with_target_option(required=False)
+@click.option("--tool", "tool_name", required=True)
+@click.option(
+    "-o",
+    "--out",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=None,
+    help="Write the starter batch file (default: stdout).",
+)
+def tools_batch_template_cmd(tool_name: str, target: str | None, out: Path | None) -> None:
+    """Write a starter YAML file for `sonar tools batch --file`."""
+
+    write_batch_example(tool_name, target=target, out_path=out)
 
 
 @tools_group.group(
