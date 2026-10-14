@@ -60,15 +60,27 @@ File-based calls live in `interactor/args_file.py` and `interactor/tool_template
 - YAML under `config/suites/` or Python suite in `src/mcp_sonar/suite/` registered in `suite/registry.py`.
 - Bindings must align with `binding` on targets in `targets.yaml`.
 
+### Credits (`CREDITS.md`)
+
+Keep **CREDITS.md** updated when adding or changing integrations with external eval frameworks (MCP Lens, Agentic Eval Flow, mcpchecker). README links to it; do not remove upstream attribution.
+
 ### Optional MCP Lens suite (`mcp-lens`)
 
-[MCP Lens](https://github.com/devninja-in/mcp-lens) is an **optional** dependency (`uv sync --extra mcp-lens`), not required for core installs.
+[MCP Lens](https://github.com/devninja-in/mcp-lens) by **devninja-in** is an **optional** dependency (`uv sync --extra mcp-lens`), not required for core installs.
 
 - Integration code: `src/mcp_sonar/integrations/mcp_lens/` (export tool defs, call Lens eval APIs).
 - Suite: `src/mcp_sonar/suite/mcp_lens.py`; mode is set via CLI `--lens-mode static|llm|both` using `suite/mcp_lens_context.py` (context var read when `steps()` runs).
 - Runner pseudo-tools `__mcp_lens_static__` / `__mcp_lens_llm__` in `core/runner.py` list tools from the target and run Lens without invoking MCP tools.
 - Functional check: `check_lens_gate` in `checks/builtin.py`.
 - Do not vendor MCP Lens; keep it as a git-sourced optional extra in `pyproject.toml`.
+
+### Agentic Eval Flow suite (`agentic-mcp`)
+
+- **[RHEcosystemAppEng/agentic_eval_flow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** (Apache-2.0): MCPChecker submission layout and report model; aggregation adapted in `integrations/agentic_eval_flow/aggregate.py` from upstream `scripts/aggregate_mcpchecker.py`.
+- Uses the **[mcpchecker](https://github.com/mcpchecker/mcpchecker)** CLI at runtime (not vendored in this repo).
+- Default eval pack: `config/eval-flow/default`. Users can point `--eval-pack` at a submission-style directory (`eval.yaml`, `tasks/`).
+- **HTTP targets only** — MCPChecker needs `MCP_URL`; sonar generates `mcp-config.yaml` from `streamable_http` + `auth.bearer_env`.
+- Do not commit proprietary gateway URLs; keep real eval packs gitignored if needed.
 
 ### LLM providers (`src/mcp_sonar/llm/`)
 

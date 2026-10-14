@@ -1,4 +1,8 @@
-"""Optional integration with [MCP Lens](https://github.com/devninja-in/mcp-lens)."""
+"""Optional integration with MCP Lens (https://github.com/devninja-in/mcp-lens).
+
+Evaluation rules and scoring are implemented by the upstream ``mcp-lens`` package;
+see CREDITS.md in the mcp-sonar repository root.
+"""
 
 from mcp_sonar.integrations.mcp_lens.evaluate import (
     LensMode,
