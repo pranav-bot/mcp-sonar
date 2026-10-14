@@ -38,6 +38,7 @@ from mcp_sonar.core.report import emit_report, print_compare_report, print_singl
 from mcp_sonar.core.runner import compare_targets, run_suite_on_target
 from mcp_sonar.core.types import ReportFormat
 from mcp_sonar.display import print_targets_table
+from mcp_sonar.llm.cli_cmds import run_llm_list
 from mcp_sonar.interactor.tools_cmds import (
     run_prompts_list,
     run_resources_list,
@@ -102,6 +103,26 @@ def main() -> None:
     Shorthand commands (same as `sonar tools …`):
       list-tools, describe-tool, invoke, call, template, batch, info, …
     """
+
+
+@main.group("llm", help="LLM provider configs for MCP Lens (--suite mcp-lens --lens-mode llm).")
+def llm_group() -> None:
+    """Inspect llm.json provider entries (Anthropic, OpenAI, Vertex, models-corps)."""
+
+
+@llm_group.command("list")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Path to llm.json (default: MCP_SONAR_LLM_CONFIG, ./llm.json, or config/llm.json).",
+)
+@click.option("--format", "fmt", type=click.Choice(["table", "json"]), default="table", show_default=True)
+def llm_list_cmd(config_path: Path | None, fmt: str) -> None:
+    """List named LLM providers, models, and rate limits from llm.json."""
+
+    run_llm_list(config_path, fmt)
 
 
 @main.command("list-suites")
