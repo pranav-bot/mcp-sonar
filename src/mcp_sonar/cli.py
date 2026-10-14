@@ -13,6 +13,7 @@ from mcp_sonar.cli_help import (
     MAIN_EPILOG,
     OUT_HELP,
     REPORT_FORMAT_HELP,
+    LENS_MODE_HELP,
     SKIP_FUNCTIONAL_HELP,
     SUITE_HELP,
     TOOLS_GROUP_HELP,
@@ -47,6 +48,7 @@ from mcp_sonar.interactor.tools_cmds import (
     run_tools_template,
     write_batch_example,
 )
+from mcp_sonar.suite.mcp_lens_context import reset_lens_mode, set_lens_mode
 from mcp_sonar.suite.registry import ensure_suites_loaded, get_suite, list_suites
 from mcp_sonar.target import connect_target
 
@@ -67,6 +69,14 @@ def _resolve_target_checked(targets: TargetsFile, name: str) -> tuple[str, Targe
         return resolve_target(targets, name)
     except UnknownTargetError as exc:
         raise click.ClickException(exc.format_message()) from exc
+
+
+def _apply_lens_mode(suite_id: str, lens_mode: str | None) -> object | None:
+    if suite_id != "mcp-lens":
+        if lens_mode is not None:
+            raise click.ClickException("--lens-mode is only valid with --suite mcp-lens")
+        return None
+    return set_lens_mode(lens_mode or "both")
 
 
 @click.group(
@@ -412,6 +422,12 @@ def tools_prompts_list_cmd(target: str, config_path: Path | None, fmt: str) -> N
     help=REPORT_FORMAT_HELP,
 )
 @click.option("--skip-functional", is_flag=True, help=SKIP_FUNCTIONAL_HELP)
+@click.option(
+    "--lens-mode",
+    type=click.Choice(["static", "llm", "both"]),
+    default=None,
+    help=LENS_MODE_HELP,
+)
 def run_cmd(
     target: str,
     suite_id: str,
@@ -421,6 +437,7 @@ def run_cmd(
     out_path: Path | None,
     fmt: ReportFormat,
     skip_functional: bool,
+    lens_mode: str | None,
 ) -> None:
     """\b
     Run a benchmark suite against one MCP target.
@@ -441,14 +458,19 @@ def run_cmd(
                 f"Target binding '{target_cfg.binding}' is not used in suite '{suite_id}'. "
                 f"Suite bindings: {', '.join(sorted(suite.supported_bindings()))}"
             )
-        async with connect_target(target_name, target_cfg) as connected:
-            report = await run_suite_on_target(
-                connected,
-                suite,
-                warmup=warmup,
-                iterations=iterations,
-                skip_functional=skip_functional,
-            )
+        lens_token = _apply_lens_mode(suite_id, lens_mode)
+        try:
+            async with connect_target(target_name, target_cfg) as connected:
+                report = await run_suite_on_target(
+                    connected,
+                    suite,
+                    warmup=warmup,
+                    iterations=iterations,
+                    skip_functional=skip_functional,
+                )
+        finally:
+            if lens_token is not None:
+                reset_lens_mode(lens_token)
         print_single_report(report)
         emit_report(out_path, fmt, report)
         if any(not s.functional_pass and not s.skipped for s in report.scenarios):
@@ -482,6 +504,12 @@ def run_cmd(
     help=REPORT_FORMAT_HELP,
 )
 @click.option("--skip-functional", is_flag=True, help=SKIP_FUNCTIONAL_HELP)
+@click.option(
+    "--lens-mode",
+    type=click.Choice(["static", "llm", "both"]),
+    default=None,
+    help=LENS_MODE_HELP,
+)
 def compare_cmd(
     left: str,
     right: str,
@@ -492,6 +520,7 @@ def compare_cmd(
     out_path: Path | None,
     fmt: ReportFormat,
     skip_functional: bool,
+    lens_mode: str | None,
 ) -> None:
     """\b
     Run the same suite on two targets and compare results.
@@ -513,16 +542,21 @@ def compare_cmd(
                 raise click.ClickException(
                     f"Target '{label}' binding '{cfg.binding}' is not defined in suite '{suite_id}'"
                 )
-        async with connect_target(left_name, left_cfg) as left_target:
-            async with connect_target(right_name, right_cfg) as right_target:
-                report = await compare_targets(
-                    left_target,
-                    right_target,
-                    suite,
-                    warmup=warmup,
-                    iterations=iterations,
-                    skip_functional=skip_functional,
-                )
+        lens_token = _apply_lens_mode(suite_id, lens_mode)
+        try:
+            async with connect_target(left_name, left_cfg) as left_target:
+                async with connect_target(right_name, right_cfg) as right_target:
+                    report = await compare_targets(
+                        left_target,
+                        right_target,
+                        suite,
+                        warmup=warmup,
+                        iterations=iterations,
+                        skip_functional=skip_functional,
+                    )
+        finally:
+            if lens_token is not None:
+                reset_lens_mode(lens_token)
         print_compare_report(report)
         emit_report(out_path, fmt, report)
         failed = False

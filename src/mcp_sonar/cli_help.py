@@ -63,6 +63,12 @@ SKIP_FUNCTIONAL_HELP = (
     "Useful when comparing transports on the same machine."
 )
 
+LENS_MODE_HELP = (
+    "For suite mcp-lens only: run static rules, LLM checks, or both (default: both). "
+    "Requires `uv sync --extra mcp-lens`; LLM mode needs MCP Lens llm.json."
+)
+
+
 def with_config_option(*, required: bool = False) -> Callable[[F], F]:
     def decorator(f: F) -> F:
         return click.option(

@@ -32,6 +32,17 @@ Each target is a named MCP endpoint:
 
 **Built-in:** `mcp-smoke` — `tools/list` via `__list_tools__`.
 
+**Built-in:** `mcp-lens` — [MCP Lens](https://github.com/devninja-in/mcp-lens) static and/or LLM evaluation of your server’s tool catalog (no tool invocations). Install the optional dependency and choose what to run:
+
+```bash
+uv sync --extra mcp-lens
+sonar run --config config/targets.yaml --target local-http --suite mcp-lens --lens-mode static
+sonar run --config config/targets.yaml --target local-http --suite mcp-lens --lens-mode llm
+sonar run --config config/targets.yaml --target local-http --suite mcp-lens --lens-mode both
+```
+
+`--lens-mode` defaults to `both` for `mcp-lens`. LLM mode requires MCP Lens `llm.json` (see upstream docs).
+
 **YAML:** any `config/suites/*.yaml` is loaded automatically when you pass `--config config/targets.yaml`.
 
 Example (`config/suites/everything-smoke.yaml`) targets the official [server-everything](https://www.npmjs.com/package/@modelcontextprotocol/server-everything) reference server.

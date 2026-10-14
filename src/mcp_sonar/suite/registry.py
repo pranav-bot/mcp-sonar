@@ -44,9 +44,11 @@ def load_suites_from_directory(directory: Path) -> int:
 
 
 def _load_builtin_suites() -> None:
+    from mcp_sonar.suite.mcp_lens import register as register_lens  # noqa: PLC0415
     from mcp_sonar.suite.mcp_smoke import register  # noqa: PLC0415
 
     register()
+    register_lens()
 
 
 def ensure_suites_loaded(config_dir: Path | None = None) -> None:

@@ -38,6 +38,19 @@ def check_contains_text(outcome: ToolOutcome, *, text: str, **_kwargs: Any) -> t
     return False, f"'{text}' not in response"
 
 
+def check_lens_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
+    if outcome.is_error:
+        return False, outcome.error_message or outcome.text[:200]
+    structured = outcome.structured if isinstance(outcome.structured, dict) else None
+    if structured and "summary" in structured:
+        return bool(structured.get("gate_passed")), str(structured["summary"])
+    if structured and "gate_passed" in structured:
+        score = structured.get("overall_score", 0)
+        passed = bool(structured["gate_passed"])
+        return passed, f"score {score:.1f} gate {'pass' if passed else 'FAIL'}"
+    return check_not_error(outcome)
+
+
 def check_json_path_exists(outcome: ToolOutcome, *, path: str, **_kwargs: Any) -> tuple[bool, str]:
     data = _parse_json(outcome.text)
     if data is None:

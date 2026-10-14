@@ -11,8 +11,58 @@ from mcp_sonar.core.types import (
     SingleTargetReport,
 )
 from mcp_sonar.suite.base import ResolvedStep, resolve_step
+from mcp_sonar.suite.mcp_lens import LENS_LLM_TOOL, LENS_STATIC_TOOL
 from mcp_sonar.suite.registry import Suite
 from mcp_sonar.target import ConnectedTarget
+
+_lens_tool_cache: dict[str, list[dict]] = {}
+
+
+def clear_lens_tool_cache() -> None:
+    _lens_tool_cache.clear()
+
+
+async def _lens_tools_for_target(target: ConnectedTarget) -> list[dict]:
+    from mcp_sonar.integrations.mcp_lens import tools_to_lens_dicts  # noqa: PLC0415
+
+    if target.name not in _lens_tool_cache:
+        definitions = await target.list_tool_definitions()
+        _lens_tool_cache[target.name] = tools_to_lens_dicts(definitions)
+    return _lens_tool_cache[target.name]
+
+
+async def _invoke_mcp_lens(target: ConnectedTarget, mode: str) -> Any:
+    from mcp_sonar.core.types import ToolOutcome  # noqa: PLC0415
+    from mcp_sonar.integrations.mcp_lens.evaluate import LensNotInstalledError, evaluate_tools  # noqa: PLC0415
+
+    try:
+        tools = await _lens_tools_for_target(target)
+        result = evaluate_tools(tools, server_name=target.name, mode=mode)  # type: ignore[arg-type]
+    except (LensNotInstalledError, RuntimeError) as exc:
+        message = str(exc)
+        return ToolOutcome(
+            tool_name=f"__mcp_lens_{mode}__",
+            arguments={"mode": mode},
+            is_error=True,
+            text=message,
+            payload_bytes=len(message.encode()),
+            error_message=message,
+        )
+
+    return ToolOutcome(
+        tool_name=f"__mcp_lens_{mode}__",
+        arguments={"mode": mode},
+        is_error=not result.gate_passed,
+        text=result.report_text,
+        payload_bytes=len(result.report_text.encode()),
+        structured={
+            "gate_passed": result.gate_passed,
+            "overall_score": result.overall_score,
+            "summary": result.summary,
+            "lens_mode": result.mode,
+        },
+        error_message=result.summary if not result.gate_passed else None,
+    )
 
 
 def _transport_fields(target: ConnectedTarget) -> dict[str, str]:
@@ -24,6 +74,10 @@ def _transport_fields(target: ConnectedTarget) -> dict[str, str]:
 
 
 async def _invoke_resolved(target: ConnectedTarget, resolved: ResolvedStep) -> Any:
+    if resolved.tool_name == LENS_STATIC_TOOL:
+        return await _invoke_mcp_lens(target, "static")
+    if resolved.tool_name == LENS_LLM_TOOL:
+        return await _invoke_mcp_lens(target, "llm")
     if resolved.tool_name == "__list_tools__":
         names = await target.list_tools()
         from mcp_sonar.core.types import ToolOutcome  # noqa: PLC0415
@@ -108,6 +162,8 @@ async def run_suite_on_target(
     iterations: int,
     skip_functional: bool,
 ) -> SingleTargetReport:
+    if suite.id == "mcp-lens":
+        clear_lens_tool_cache()
     report = SingleTargetReport(
         suite_id=suite.id,
         target_name=target.name,
@@ -140,6 +196,8 @@ async def compare_targets(
     iterations: int,
     skip_functional: bool,
 ) -> CompareReport:
+    if suite.id == "mcp-lens":
+        clear_lens_tool_cache()
     report = CompareReport(
         suite_id=suite.id,
         left_target=left.name,
