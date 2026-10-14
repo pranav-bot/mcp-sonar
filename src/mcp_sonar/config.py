@@ -86,8 +86,38 @@ def require_targets_path(path: Path | None) -> Path:
     return config
 
 
+class UnknownTargetError(LookupError):
+    """Raised when --target does not match any entry in targets.yaml."""
+
+    def __init__(self, name: str, config: TargetsFile) -> None:
+        self.name = name
+        self.config = config
+        super().__init__(name)
+
+    def format_message(self) -> str:
+        from mcp_sonar.transport import transport_info  # noqa: PLC0415
+
+        lines = [
+            f"Unknown target '{self.name}'.",
+            "",
+            "Available targets (use one of these with --target):",
+        ]
+        if not self.config.targets:
+            lines.append("  (none — add entries under `targets:` in targets.yaml)")
+        else:
+            for target_name, cfg in sorted(self.config.targets.items()):
+                info = transport_info(cfg)
+                label = cfg.label or target_name
+                lines.append(
+                    f"  {target_name}  —  {info.kind_label}  —  {label}"
+                )
+                lines.append(f"      {info.endpoint}")
+        lines.append("")
+        lines.append("Inspect targets: sonar list-targets --config <path-to-targets.yaml>")
+        return "\n".join(lines)
+
+
 def resolve_target(config: TargetsFile, name: str) -> tuple[str, TargetConfig]:
     if name not in config.targets:
-        known = ", ".join(sorted(config.targets))
-        raise KeyError(f"Unknown target '{name}'. Known: {known}")
+        raise UnknownTargetError(name, config)
     return name, config.targets[name]

@@ -7,6 +7,13 @@ from pathlib import Path
 
 import click
 
+from mcp_sonar.cli_help import (
+    ARGS_JSON_HELP,
+    with_config_option,
+    with_list_format_option,
+    with_target_option,
+    with_tools_format_option,
+)
 from mcp_sonar.config import require_targets_path
 from mcp_sonar.interactor.tools_cmds import (
     run_prompts_list,
@@ -26,17 +33,16 @@ def register_flat_commands(cli: click.Group) -> None:
     """Attach shorthand interact commands to the root `sonar` group."""
 
     @cli.command("list-tools")
-    @click.option("--target", required=True, help="Target name from targets.yaml")
-    @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None)
-    @click.option(
-        "--format",
-        "fmt",
-        type=click.Choice(["table", "names", "json"]),
-        default="table",
-        show_default=True,
-    )
+    @with_target_option()
+    @with_config_option()
+    @with_tools_format_option()
     def list_tools_cmd(target: str, config_path: Path | None, fmt: str) -> None:
-        """List tools exposed by an MCP server (shorthand for `sonar tools list`)."""
+        """\b
+        Shorthand for `sonar tools list`.
+
+        List MCP tools for --target; same --format options (table, names, json).
+        """
+
         try:
             require_targets_path(config_path)
         except FileNotFoundError as exc:
@@ -48,11 +54,20 @@ def register_flat_commands(cli: click.Group) -> None:
         asyncio.run(_run())
 
     @cli.command("describe-tool")
-    @click.option("--target", required=True)
-    @click.argument("tool_name")
-    @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None)
+    @with_target_option()
+    @click.argument(
+        "tool_name",
+        metavar="TOOL",
+        type=str,
+        required=True,
+    )
+    @with_config_option()
     def describe_tool_cmd(target: str, tool_name: str, config_path: Path | None) -> None:
-        """Print one tool's schema (shorthand for `sonar tools describe`)."""
+        """\b
+        Shorthand for `sonar tools describe --tool TOOL`.
+
+        Prints JSON schema for a single tool.
+        """
 
         async def _run() -> None:
             await run_tools_describe(target, tool_name, config_path)
@@ -60,10 +75,14 @@ def register_flat_commands(cli: click.Group) -> None:
         asyncio.run(_run())
 
     @cli.command("info")
-    @click.option("--target", required=True)
-    @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None)
+    @with_target_option()
+    @with_config_option()
     def info_cmd(target: str, config_path: Path | None) -> None:
-        """Show MCP server initialize metadata (shorthand for `sonar tools info`)."""
+        """\b
+        Shorthand for `sonar tools info`.
+
+        Server name, version, capabilities, and target transport details.
+        """
 
         async def _run() -> None:
             await run_tools_info(target, config_path)
@@ -71,12 +90,22 @@ def register_flat_commands(cli: click.Group) -> None:
         asyncio.run(_run())
 
     @cli.command("call")
-    @click.option("--target", required=True)
-    @click.argument("tool_name")
-    @click.option("--args", "args_json", default="{}", help="JSON object of tool arguments")
-    @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None)
+    @with_target_option()
+    @click.argument(
+        "tool_name",
+        metavar="TOOL",
+        type=str,
+        required=True,
+    )
+    @click.option("--args", "args_json", default="{}", help=ARGS_JSON_HELP)
+    @with_config_option()
     def call_cmd(target: str, tool_name: str, args_json: str, config_path: Path | None) -> None:
-        """Call an MCP tool (shorthand for `sonar tools call`)."""
+        """\b
+        Shorthand for `sonar tools call --tool TOOL`.
+
+        Example:
+          sonar call echo --target my-server --args '{"message":"hello"}'
+        """
 
         async def _run() -> None:
             await run_tools_call(target, tool_name, args_json, config_path)
@@ -84,17 +113,11 @@ def register_flat_commands(cli: click.Group) -> None:
         asyncio.run(_run())
 
     @cli.command("list-resources")
-    @click.option("--target", required=True)
-    @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None)
-    @click.option(
-        "--format",
-        "fmt",
-        type=click.Choice(["table", "names", "json"]),
-        default="table",
-        show_default=True,
-    )
+    @with_target_option()
+    @with_config_option()
+    @with_list_format_option()
     def list_resources_cmd(target: str, config_path: Path | None, fmt: str) -> None:
-        """List MCP resources (shorthand for `sonar tools resources list`)."""
+        """Shorthand for `sonar tools resources list`."""
 
         async def _run() -> None:
             await run_resources_list(target, config_path, fmt)  # type: ignore[arg-type]
@@ -102,17 +125,11 @@ def register_flat_commands(cli: click.Group) -> None:
         asyncio.run(_run())
 
     @cli.command("list-prompts")
-    @click.option("--target", required=True)
-    @click.option("--config", "config_path", type=click.Path(path_type=Path), default=None)
-    @click.option(
-        "--format",
-        "fmt",
-        type=click.Choice(["table", "names", "json"]),
-        default="table",
-        show_default=True,
-    )
+    @with_target_option()
+    @with_config_option()
+    @with_list_format_option()
     def list_prompts_cmd(target: str, config_path: Path | None, fmt: str) -> None:
-        """List MCP prompts (shorthand for `sonar tools prompts list`)."""
+        """Shorthand for `sonar tools prompts list`."""
 
         async def _run() -> None:
             await run_prompts_list(target, config_path, fmt)  # type: ignore[arg-type]

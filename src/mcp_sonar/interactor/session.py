@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from mcp_sonar.config import load_targets, require_targets_path, resolve_target
+from mcp_sonar.config import UnknownTargetError, load_targets, require_targets_path, resolve_target
 from mcp_sonar.target import ConnectedTarget, connect_target
 
 
@@ -18,7 +18,10 @@ async def open_target(
 ) -> AsyncIterator[tuple[str, ConnectedTarget]]:
     config_file = require_targets_path(config_path)
     targets = load_targets(config_file)
-    target_name, target_cfg = resolve_target(targets, target)
+    try:
+        target_name, target_cfg = resolve_target(targets, target)
+    except UnknownTargetError as exc:
+        raise click.ClickException(exc.format_message()) from exc
     async with connect_target(target_name, target_cfg) as connected:
         yield target_name, connected
 
