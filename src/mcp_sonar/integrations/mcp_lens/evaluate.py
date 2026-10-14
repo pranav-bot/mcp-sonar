@@ -57,7 +57,8 @@ def _build_static_layers(tools: list[dict]) -> dict:
 
 
 async def _build_llm_layer(tools: list[dict]) -> tuple[object | None, dict[str, Any]]:
-    from src.app.eval.llm_config import (  # noqa: PLC0415
+    from mcp_sonar.llm.config import resolve_llm_config_path  # noqa: PLC0415
+    from mcp_sonar.llm.registry import (  # noqa: PLC0415
         get_adapter_for_config,
         get_default_llm_name,
         load_llm_configs,
@@ -68,9 +69,11 @@ async def _build_llm_layer(tools: list[dict]) -> tuple[object | None, dict[str, 
     default_name = get_default_llm_name()
     configs = load_llm_configs()
     if not configs or not default_name:
+        path_hint = resolve_llm_config_path()
+        where = f"Found: {path_hint}" if path_hint else "Copy config/llm.example.json to llm.json or config/llm.json"
         raise RuntimeError(
-            "LLM evaluation requires llm.json with a default provider "
-            "(see MCP Lens docs: https://github.com/devninja-in/mcp-lens)"
+            "LLM evaluation requires llm.json with a default provider. "
+            f"{where}. See README (LLM providers)."
         )
     cfg = configs.get(default_name, {})
     adapter = get_adapter_for_config(default_name)
