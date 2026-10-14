@@ -53,10 +53,22 @@ When extending MCP interaction (inspired by generic “MCP interactor” CLIs, n
 3. Document in `README.md` with generic targets only.
 4. Add tests that do not require a running MCP server unless marked `live`.
 
+File-based calls live in `interactor/args_file.py` and `interactor/tool_template.py`. Prefer YAML input files over long `--args` JSON on the shell. Human-readable tool output belongs in `interactor/tool_describe.py` (`--format rich` default, `json` for scripts).
+
 ## Adding benchmark suites
 
 - YAML under `config/suites/` or Python suite in `src/mcp_sonar/suite/` registered in `suite/registry.py`.
 - Bindings must align with `binding` on targets in `targets.yaml`.
+
+### Optional MCP Lens suite (`mcp-lens`)
+
+[MCP Lens](https://github.com/devninja-in/mcp-lens) is an **optional** dependency (`uv sync --extra mcp-lens`), not required for core installs.
+
+- Integration code: `src/mcp_sonar/integrations/mcp_lens/` (export tool defs, call Lens eval APIs).
+- Suite: `src/mcp_sonar/suite/mcp_lens.py`; mode is set via CLI `--lens-mode static|llm|both` using `suite/mcp_lens_context.py` (context var read when `steps()` runs).
+- Runner pseudo-tools `__mcp_lens_static__` / `__mcp_lens_llm__` in `core/runner.py` list tools from the target and run Lens without invoking MCP tools.
+- Functional check: `check_lens_gate` in `checks/builtin.py`.
+- Do not vendor MCP Lens; keep it as a git-sourced optional extra in `pyproject.toml`.
 
 ## Before you finish
 
