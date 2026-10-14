@@ -1,0 +1,51 @@
+id: tool-accuracy
+description: >
+  Deterministic tool output checks (no LLM). Works with servers that expose
+  echo and standard list tools (e.g. server-everything).
+
+scenarios:
+  - id: list_tools
+    description: tools/list returns a non-empty catalog
+    calls:
+      default:
+        tool: __list_tools__
+        arguments: {}
+    check: list_tools_nonempty
+
+  - id: echo_roundtrip
+    description: echo returns the submitted message in the response body
+    calls:
+      default:
+        tool: echo
+        arguments:
+          message: sonar-accuracy-probe
+    check:
+      name: contains_text
+      args:
+        text: sonar-accuracy-probe
+
+  - id: echo_not_empty
+    description: echo response is non-trivial
+    calls:
+      default:
+        tool: echo
+        arguments:
+          message: ping
+    check:
+      name: contains_text
+      args:
+        text: ping
+
+  - id: add_numbers
+    description: add tool returns sum when available (server-everything)
+    calls:
+      default:
+        tool: add
+        arguments:
+          a: 2
+          b: 3
+    check:
+      name: contains_text
+      args:
+        text: "5"
+    skip_for_bindings: []

@@ -1,0 +1,14 @@
+apiVersion: mcpchecker/v1
+kind: Eval
+metadata:
+  name: sonar-default-mcp-eval
+  description: Default MCPChecker pack for sonar agentic-mcp suite
+spec:
+  agent:
+    model: google:gemini-2.5-flash
+    temperature: 0.0
+  judge:
+    model: openai:gpt-4o
+  taskTimeout: 300
+  tasks:
+    - tasks/list-tools.yaml

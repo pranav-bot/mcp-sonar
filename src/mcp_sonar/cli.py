@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import click
@@ -13,7 +14,14 @@ from mcp_sonar.cli_help import (
     MAIN_EPILOG,
     OUT_HELP,
     REPORT_FORMAT_HELP,
+    EVAL_PACK_HELP,
+    EVAL_THRESHOLD_HELP,
     LENS_MODE_HELP,
+    LOAD_ARGS_HELP,
+    LOAD_CONCURRENCY_HELP,
+    LOAD_MIN_SUCCESS_HELP,
+    LOAD_TOOL_HELP,
+    MCPCHECKER_BIN_HELP,
     SKIP_FUNCTIONAL_HELP,
     SUITE_HELP,
     VERBOSE_RUN_HELP,
@@ -50,6 +58,12 @@ from mcp_sonar.interactor.tools_cmds import (
     run_tools_template,
     write_batch_example,
 )
+from mcp_sonar.suite.agentic_eval_context import reset_eval_flow_settings, set_eval_flow_settings
+from mcp_sonar.suite.load_context import (
+    parse_load_args_json,
+    reset_load_settings,
+    set_load_settings,
+)
 from mcp_sonar.suite.mcp_lens_context import reset_lens_mode, set_lens_mode
 from mcp_sonar.suite.registry import ensure_suites_loaded, get_suite, list_suites
 from mcp_sonar.target import connect_target
@@ -79,6 +93,50 @@ def _apply_lens_mode(suite_id: str, lens_mode: str | None) -> object | None:
             raise click.ClickException("--lens-mode is only valid with --suite mcp-lens")
         return None
     return set_lens_mode(lens_mode or "both")
+
+
+def _apply_load_settings(
+    suite_id: str,
+    concurrency: int | None,
+    load_tool: str | None,
+    load_args_json: str | None,
+    min_success_rate: float,
+) -> object | None:
+    if suite_id != "mcp-load":
+        if concurrency is not None or load_tool is not None or load_args_json is not None:
+            raise click.ClickException(
+                "--load-concurrency, --load-tool, and --load-args are only valid with --suite mcp-load"
+            )
+        return None
+    try:
+        args = parse_load_args_json(load_args_json)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    return set_load_settings(
+        concurrency=concurrency if concurrency is not None else 10,
+        tool=load_tool or "__list_tools__",
+        arguments=args,
+        min_success_rate=min_success_rate,
+    )
+
+
+def _apply_eval_flow_settings(
+    suite_id: str,
+    eval_pack: Path | None,
+    mcpchecker_bin: str | None,
+    eval_threshold: float,
+) -> object | None:
+    if suite_id != "agentic-mcp":
+        if eval_pack is not None or mcpchecker_bin is not None:
+            raise click.ClickException(
+                "--eval-pack and --mcpchecker-bin are only valid with --suite agentic-mcp"
+            )
+        return None
+    return set_eval_flow_settings(
+        eval_pack=eval_pack,
+        mcpchecker_bin=mcpchecker_bin,
+        threshold=eval_threshold,
+    )
 
 
 @click.group(
@@ -451,6 +509,18 @@ def tools_prompts_list_cmd(target: str, config_path: Path | None, fmt: str) -> N
     default=None,
     help=LENS_MODE_HELP,
 )
+@click.option(
+    "--eval-pack",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=None,
+    help=EVAL_PACK_HELP,
+)
+@click.option("--mcpchecker-bin", default=None, help=MCPCHECKER_BIN_HELP)
+@click.option("--eval-threshold", default=0.7, show_default=True, help=EVAL_THRESHOLD_HELP)
+@click.option("--load-concurrency", type=int, default=None, help=LOAD_CONCURRENCY_HELP)
+@click.option("--load-tool", default=None, help=LOAD_TOOL_HELP)
+@click.option("--load-args", "load_args_json", default=None, help=LOAD_ARGS_HELP)
+@click.option("--load-min-success", default=0.95, show_default=True, help=LOAD_MIN_SUCCESS_HELP)
 def run_cmd(
     target: str,
     suite_id: str,
@@ -462,6 +532,13 @@ def run_cmd(
     skip_functional: bool,
     verbose: bool,
     lens_mode: str | None,
+    eval_pack: Path | None,
+    mcpchecker_bin: str | None,
+    eval_threshold: float,
+    load_concurrency: int | None,
+    load_tool: str | None,
+    load_args_json: str | None,
+    load_min_success: float,
 ) -> None:
     """\b
     Run a benchmark suite against one MCP target.
@@ -483,6 +560,10 @@ def run_cmd(
                 f"Suite bindings: {', '.join(sorted(suite.supported_bindings()))}"
             )
         lens_token = _apply_lens_mode(suite_id, lens_mode)
+        eval_token = _apply_eval_flow_settings(suite_id, eval_pack, mcpchecker_bin, eval_threshold)
+        load_token = _apply_load_settings(
+            suite_id, load_concurrency, load_tool, load_args_json, load_min_success
+        )
         try:
             async with connect_target(target_name, target_cfg) as connected:
                 report = await run_suite_on_target(
@@ -496,6 +577,10 @@ def run_cmd(
         finally:
             if lens_token is not None:
                 reset_lens_mode(lens_token)
+            if eval_token is not None:
+                reset_eval_flow_settings(eval_token)
+            if load_token is not None:
+                reset_load_settings(load_token)
         print_single_report(report, verbose=verbose)
         emit_report(out_path, fmt, report)
         if any(not s.functional_pass and not s.skipped for s in report.scenarios):
@@ -536,6 +621,18 @@ def run_cmd(
     default=None,
     help=LENS_MODE_HELP,
 )
+@click.option(
+    "--eval-pack",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=None,
+    help=EVAL_PACK_HELP,
+)
+@click.option("--mcpchecker-bin", default=None, help=MCPCHECKER_BIN_HELP)
+@click.option("--eval-threshold", default=0.7, show_default=True, help=EVAL_THRESHOLD_HELP)
+@click.option("--load-concurrency", type=int, default=None, help=LOAD_CONCURRENCY_HELP)
+@click.option("--load-tool", default=None, help=LOAD_TOOL_HELP)
+@click.option("--load-args", "load_args_json", default=None, help=LOAD_ARGS_HELP)
+@click.option("--load-min-success", default=0.95, show_default=True, help=LOAD_MIN_SUCCESS_HELP)
 def compare_cmd(
     left: str,
     right: str,
@@ -548,6 +645,13 @@ def compare_cmd(
     skip_functional: bool,
     verbose: bool,
     lens_mode: str | None,
+    eval_pack: Path | None,
+    mcpchecker_bin: str | None,
+    eval_threshold: float,
+    load_concurrency: int | None,
+    load_tool: str | None,
+    load_args_json: str | None,
+    load_min_success: float,
 ) -> None:
     """\b
     Run the same suite on two targets and compare results.
@@ -570,6 +674,10 @@ def compare_cmd(
                     f"Target '{label}' binding '{cfg.binding}' is not defined in suite '{suite_id}'"
                 )
         lens_token = _apply_lens_mode(suite_id, lens_mode)
+        eval_token = _apply_eval_flow_settings(suite_id, eval_pack, mcpchecker_bin, eval_threshold)
+        load_token = _apply_load_settings(
+            suite_id, load_concurrency, load_tool, load_args_json, load_min_success
+        )
         try:
             async with connect_target(left_name, left_cfg) as left_target:
                 async with connect_target(right_name, right_cfg) as right_target:
@@ -585,6 +693,10 @@ def compare_cmd(
         finally:
             if lens_token is not None:
                 reset_lens_mode(lens_token)
+            if eval_token is not None:
+                reset_eval_flow_settings(eval_token)
+            if load_token is not None:
+                reset_load_settings(load_token)
         print_compare_report(report, verbose=verbose)
         emit_report(out_path, fmt, report)
         failed = False

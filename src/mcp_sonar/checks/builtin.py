@@ -38,7 +38,7 @@ def check_contains_text(outcome: ToolOutcome, *, text: str, **_kwargs: Any) -> t
     return False, f"'{text}' not in response"
 
 
-def check_lens_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
+def _check_structured_gate(outcome: ToolOutcome) -> tuple[bool, str]:
     if outcome.is_error:
         return False, outcome.error_message or outcome.text[:200]
     structured = outcome.structured if isinstance(outcome.structured, dict) else None
@@ -49,6 +49,18 @@ def check_lens_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
         passed = bool(structured["gate_passed"])
         return passed, f"score {score:.1f} gate {'pass' if passed else 'FAIL'}"
     return check_not_error(outcome)
+
+
+def check_lens_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
+    return _check_structured_gate(outcome)
+
+
+def check_eval_flow_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
+    return _check_structured_gate(outcome)
+
+
+def check_load_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
+    return _check_structured_gate(outcome)
 
 
 def check_json_path_exists(outcome: ToolOutcome, *, path: str, **_kwargs: Any) -> tuple[bool, str]:

@@ -74,6 +74,27 @@ LENS_MODE_HELP = (
     "Requires `uv sync --extra mcp-lens`; LLM mode needs MCP Lens llm.json."
 )
 
+EVAL_PACK_HELP = (
+    "For suite agentic-mcp only: directory with eval.yaml and tasks/ "
+    "(default: config/eval-flow/default)."
+)
+
+MCPCHECKER_BIN_HELP = "For suite agentic-mcp only: path to mcpchecker CLI (default: mcpchecker on PATH)."
+
+EVAL_THRESHOLD_HELP = (
+    "For suite agentic-mcp only: pass threshold for MCPChecker overall score (default: 0.7)."
+)
+
+LOAD_CONCURRENCY_HELP = "For suite mcp-load only: parallel MCP sessions per iteration (default: 10)."
+
+LOAD_TOOL_HELP = "For suite mcp-load only: tool to invoke under load (default: __list_tools__)."
+
+LOAD_ARGS_HELP = "For suite mcp-load only: JSON arguments for --load-tool (ignored for __list_tools__)."
+
+LOAD_MIN_SUCCESS_HELP = (
+    "For suite mcp-load only: minimum success rate across parallel workers (default: 0.95)."
+)
+
 
 def with_config_option(*, required: bool = False) -> Callable[[F], F]:
     def decorator(f: F) -> F:

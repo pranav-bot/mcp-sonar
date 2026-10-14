@@ -32,6 +32,20 @@ Each target is a named MCP endpoint:
 
 **Built-in:** `mcp-smoke` — `tools/list` via `__list_tools__`.
 
+**Built-in:** `mcp-load` — parallel connection stress test (N sessions invoke the same tool each iteration).
+
+```bash
+sonar run --config config/targets.yaml --target local-http --suite mcp-load \
+  --load-concurrency 20 --load-tool echo --load-args '{"message":"load"}' \
+  --iterations 5 --warmup 1
+```
+
+**YAML:** `tool-accuracy` — deterministic tool output checks (`config/suites/tool-accuracy.yaml`; echo, list, add).
+
+```bash
+sonar run --config config/targets.yaml --target everything-stdio --suite tool-accuracy
+```
+
 **Built-in:** `mcp-lens` — [MCP Lens](https://github.com/devninja-in/mcp-lens) static and/or LLM evaluation of your server’s tool catalog (no tool invocations). Install the optional dependency and choose what to run:
 
 ```bash
@@ -42,6 +56,14 @@ sonar run --config config/targets.yaml --target local-http --suite mcp-lens --le
 ```
 
 `--lens-mode` defaults to `both` for `mcp-lens`. The full Lens text report prints after the summary table; use `--verbose` on other suites to show last tool responses, or `--out` for markdown/json with a `detail` field.
+
+**Built-in:** `agentic-mcp` — [Agentic Eval Flow](https://github.com/RHEcosystemAppEng/agentic_eval_flow) MCPChecker tasks (agent + LLM judge) against a **streamable HTTP** target. Requires the [`mcpchecker`](https://github.com/mcpchecker/mcpchecker) CLI and API keys for models in your eval pack’s `eval.yaml`.
+
+```bash
+# Default task pack: config/eval-flow/default (override with --eval-pack)
+sonar run --config config/targets.yaml --target local-http --suite agentic-mcp
+sonar run ... --suite agentic-mcp --eval-pack ./my-mcp-eval --eval-threshold 0.7
+```
 
 ### LLM providers (`llm.json`)
 
@@ -125,6 +147,13 @@ sonar compare --config config/targets.yaml \
 ```
 
 Reports: terminal table plus optional `results.json` / `results.md`.
+
+## Credits
+
+Optional evaluation suites integrate third-party projects. See **[CREDITS.md](CREDITS.md)** for attribution:
+
+- **[MCP Lens](https://github.com/devninja-in/mcp-lens)** — `mcp-lens` suite (`devninja-in`).
+- **[Agentic Eval Flow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** — `agentic-mcp` suite ([RHEcosystemAppEng](https://github.com/RHEcosystemAppEng)), via the [mcpchecker](https://github.com/mcpchecker/mcpchecker) CLI.
 
 ## Compare different server shapes
 

@@ -1,0 +1,13 @@
+apiVersion: mcpchecker/v1
+kind: Task
+metadata:
+  name: list-tools
+  description: Agent lists MCP tools and confirms the server responds
+spec:
+  prompt: |
+    Use the MCP server to discover what tools are available (tools/list or equivalent).
+    Summarize how many tools exist and name at least one tool in your answer.
+  assertions:
+    - type: contains
+      expected: tool
+      description: Response should mention tools
