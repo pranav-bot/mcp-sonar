@@ -95,6 +95,18 @@ LOAD_MIN_SUCCESS_HELP = (
     "For suite mcp-load only: minimum success rate across parallel workers (default: 0.95)."
 )
 
+CONTEXT_MODE_HELP = (
+    "For suite mcp-context only: static token estimate, LLM efficiency review, or both (default: both)."
+)
+
+CONTEXT_BUDGET_HELP = (
+    "For suite mcp-context only: max estimated tokens for static gate (0 = informational, always pass)."
+)
+
+CONTEXT_MIN_LLM_SCORE_HELP = (
+    "For suite mcp-context only: minimum LLM context efficiency score 0-100 (default: 70)."
+)
+
 
 def with_config_option(*, required: bool = False) -> Callable[[F], F]:
     def decorator(f: F) -> F:

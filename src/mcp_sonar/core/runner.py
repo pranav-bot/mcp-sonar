@@ -20,6 +20,8 @@ from mcp_sonar.suite.load_context import (
     get_load_tool,
 )
 from mcp_sonar.suite.mcp_load import MCP_LOAD_PARALLEL_TOOL
+from mcp_sonar.suite.mcp_context import CONTEXT_LLM_TOOL, CONTEXT_STATIC_TOOL
+from mcp_sonar.suite.mcp_context_context import get_min_llm_score, get_token_budget
 from mcp_sonar.suite.mcp_lens import LENS_LLM_TOOL, LENS_STATIC_TOOL
 from mcp_sonar.suite.agentic_eval_context import get_eval_pack, get_eval_threshold, get_mcpchecker_bin
 from mcp_sonar.suite.registry import Suite
@@ -37,6 +39,7 @@ def _scenario_detail(outcome: Any, *, include_all_responses: bool) -> str | None
     tool_name = getattr(outcome, "tool_name", "")
     if (
         str(tool_name).startswith("__mcp_lens_")
+        or str(tool_name).startswith("__mcp_context_")
         or tool_name in (AGENTIC_MCPCHECKER_TOOL, MCP_LOAD_PARALLEL_TOOL)
     ):
         return text
@@ -139,6 +142,49 @@ def _transport_fields(target: ConnectedTarget) -> dict[str, str]:
     }
 
 
+async def _invoke_mcp_context(target: ConnectedTarget, mode: str) -> Any:
+    from mcp_sonar.core.types import ToolOutcome  # noqa: PLC0415
+    from mcp_sonar.integrations.context_usage.evaluate import (  # noqa: PLC0415
+        evaluate_llm_step,
+        evaluate_static_step,
+    )
+
+    try:
+        if mode == "static":
+            result = await evaluate_static_step(target, token_budget=get_token_budget())
+        else:
+            result = await evaluate_llm_step(
+                target,
+                token_budget=get_token_budget(),
+                min_llm_score=get_min_llm_score(),
+            )
+    except RuntimeError as exc:
+        message = str(exc)
+        return ToolOutcome(
+            tool_name=f"__mcp_context_{mode}__",
+            arguments={"mode": mode},
+            is_error=True,
+            text=message,
+            payload_bytes=len(message.encode()),
+            error_message=message,
+        )
+
+    return ToolOutcome(
+        tool_name=f"__mcp_context_{mode}__",
+        arguments={"mode": mode},
+        is_error=not result.gate_passed,
+        text=result.report_text,
+        payload_bytes=len(result.report_text.encode()),
+        structured={
+            "gate_passed": result.gate_passed,
+            "overall_score": result.overall_score,
+            "summary": result.summary,
+            "context_mode": result.mode,
+        },
+        error_message=result.summary if not result.gate_passed else None,
+    )
+
+
 async def _invoke_load_parallel(target: ConnectedTarget) -> Any:
     return await run_parallel_load(
         target.name,
@@ -155,6 +201,10 @@ async def _invoke_resolved(target: ConnectedTarget, resolved: ResolvedStep) -> A
         return await _invoke_load_parallel(target)
     if resolved.tool_name == AGENTIC_MCPCHECKER_TOOL:
         return await _invoke_agentic_eval(target)
+    if resolved.tool_name == CONTEXT_STATIC_TOOL:
+        return await _invoke_mcp_context(target, "static")
+    if resolved.tool_name == CONTEXT_LLM_TOOL:
+        return await _invoke_mcp_context(target, "llm")
     if resolved.tool_name == LENS_STATIC_TOOL:
         return await _invoke_mcp_lens(target, "static")
     if resolved.tool_name == LENS_LLM_TOOL:

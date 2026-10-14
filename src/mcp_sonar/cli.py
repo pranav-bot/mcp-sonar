@@ -15,6 +15,9 @@ from mcp_sonar.cli_help import (
     OUT_HELP,
     REPORT_FORMAT_HELP,
     EVAL_PACK_HELP,
+    CONTEXT_BUDGET_HELP,
+    CONTEXT_MIN_LLM_SCORE_HELP,
+    CONTEXT_MODE_HELP,
     EVAL_THRESHOLD_HELP,
     LENS_MODE_HELP,
     LOAD_ARGS_HELP,
@@ -64,6 +67,7 @@ from mcp_sonar.suite.load_context import (
     reset_load_settings,
     set_load_settings,
 )
+from mcp_sonar.suite.mcp_context_context import reset_context_settings, set_context_settings
 from mcp_sonar.suite.mcp_lens_context import reset_lens_mode, set_lens_mode
 from mcp_sonar.suite.registry import ensure_suites_loaded, get_suite, list_suites
 from mcp_sonar.target import connect_target
@@ -117,6 +121,26 @@ def _apply_load_settings(
         tool=load_tool or "__list_tools__",
         arguments=args,
         min_success_rate=min_success_rate,
+    )
+
+
+def _apply_context_settings(
+    suite_id: str,
+    context_mode: str | None,
+    context_budget: int,
+    min_llm_score: float,
+) -> object | None:
+    if suite_id != "mcp-context":
+        if context_mode is not None:
+            raise click.ClickException("--context-mode is only valid with --suite mcp-context")
+        return None
+    mode = context_mode or "both"
+    if mode not in ("static", "llm", "both"):
+        raise click.ClickException(f"Invalid context mode: {mode}")
+    return set_context_settings(
+        mode=mode,  # type: ignore[arg-type]
+        token_budget=context_budget,
+        min_llm_score=min_llm_score,
     )
 
 
@@ -521,6 +545,14 @@ def tools_prompts_list_cmd(target: str, config_path: Path | None, fmt: str) -> N
 @click.option("--load-tool", default=None, help=LOAD_TOOL_HELP)
 @click.option("--load-args", "load_args_json", default=None, help=LOAD_ARGS_HELP)
 @click.option("--load-min-success", default=0.95, show_default=True, help=LOAD_MIN_SUCCESS_HELP)
+@click.option(
+    "--context-mode",
+    type=click.Choice(["static", "llm", "both"]),
+    default=None,
+    help=CONTEXT_MODE_HELP,
+)
+@click.option("--context-budget", default=0, show_default=True, help=CONTEXT_BUDGET_HELP)
+@click.option("--context-min-llm-score", default=70.0, show_default=True, help=CONTEXT_MIN_LLM_SCORE_HELP)
 def run_cmd(
     target: str,
     suite_id: str,
@@ -539,6 +571,9 @@ def run_cmd(
     load_tool: str | None,
     load_args_json: str | None,
     load_min_success: float,
+    context_mode: str | None,
+    context_budget: int,
+    context_min_llm_score: float,
 ) -> None:
     """\b
     Run a benchmark suite against one MCP target.
@@ -564,6 +599,9 @@ def run_cmd(
         load_token = _apply_load_settings(
             suite_id, load_concurrency, load_tool, load_args_json, load_min_success
         )
+        context_token = _apply_context_settings(
+            suite_id, context_mode, context_budget, context_min_llm_score
+        )
         try:
             async with connect_target(target_name, target_cfg) as connected:
                 report = await run_suite_on_target(
@@ -581,6 +619,8 @@ def run_cmd(
                 reset_eval_flow_settings(eval_token)
             if load_token is not None:
                 reset_load_settings(load_token)
+            if context_token is not None:
+                reset_context_settings(context_token)
         print_single_report(report, verbose=verbose)
         emit_report(out_path, fmt, report)
         if any(not s.functional_pass and not s.skipped for s in report.scenarios):
@@ -633,6 +673,14 @@ def run_cmd(
 @click.option("--load-tool", default=None, help=LOAD_TOOL_HELP)
 @click.option("--load-args", "load_args_json", default=None, help=LOAD_ARGS_HELP)
 @click.option("--load-min-success", default=0.95, show_default=True, help=LOAD_MIN_SUCCESS_HELP)
+@click.option(
+    "--context-mode",
+    type=click.Choice(["static", "llm", "both"]),
+    default=None,
+    help=CONTEXT_MODE_HELP,
+)
+@click.option("--context-budget", default=0, show_default=True, help=CONTEXT_BUDGET_HELP)
+@click.option("--context-min-llm-score", default=70.0, show_default=True, help=CONTEXT_MIN_LLM_SCORE_HELP)
 def compare_cmd(
     left: str,
     right: str,
@@ -652,6 +700,9 @@ def compare_cmd(
     load_tool: str | None,
     load_args_json: str | None,
     load_min_success: float,
+    context_mode: str | None,
+    context_budget: int,
+    context_min_llm_score: float,
 ) -> None:
     """\b
     Run the same suite on two targets and compare results.
@@ -678,6 +729,9 @@ def compare_cmd(
         load_token = _apply_load_settings(
             suite_id, load_concurrency, load_tool, load_args_json, load_min_success
         )
+        context_token = _apply_context_settings(
+            suite_id, context_mode, context_budget, context_min_llm_score
+        )
         try:
             async with connect_target(left_name, left_cfg) as left_target:
                 async with connect_target(right_name, right_cfg) as right_target:
@@ -697,6 +751,8 @@ def compare_cmd(
                 reset_eval_flow_settings(eval_token)
             if load_token is not None:
                 reset_load_settings(load_token)
+            if context_token is not None:
+                reset_context_settings(context_token)
         print_compare_report(report, verbose=verbose)
         emit_report(out_path, fmt, report)
         failed = False

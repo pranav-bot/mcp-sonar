@@ -63,6 +63,10 @@ def check_load_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
     return _check_structured_gate(outcome)
 
 
+def check_context_gate(outcome: ToolOutcome, **_kwargs: Any) -> tuple[bool, str]:
+    return _check_structured_gate(outcome)
+
+
 def check_json_path_exists(outcome: ToolOutcome, *, path: str, **_kwargs: Any) -> tuple[bool, str]:
     data = _parse_json(outcome.text)
     if data is None:

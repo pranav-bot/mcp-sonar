@@ -1,0 +1,53 @@
+# Ready-made MCP targets: npm stdio servers (no local install) and optional remote HTTP.
+#
+# Quick start:
+#   cp config/targets.online.example.yaml config/targets.yaml
+#   uv run sonar list-targets --config config/targets.yaml
+#   uv run sonar tools list --config config/targets.yaml --target everything-stdio
+#
+# Walkthrough: config/examples/online-mcp-context.md
+#
+# Stdio entries use `npx -y` so Node downloads packages from the public npm registry on first run.
+# Remote HTTP entries may need env vars (see below). Uptime and auth policies are controlled by
+# whoever hosts the server—not by mcp-sonar.
+
+targets:
+  everything-stdio:
+    label: MCP reference server — large tool catalog (stdio, npm)
+    binding: default
+    transport:
+      type: stdio
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-everything"
+
+  memory-stdio:
+    label: MCP knowledge-graph memory server (stdio, npm)
+    binding: default
+    transport:
+      type: stdio
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-memory"
+
+  # Documented public streamable HTTP demo (kioie/tiny-go-mcp-server on Fly.io).
+  # If this fails to connect, the host may be down—use the stdio targets above or smithery-remote.
+  tiny-go-mcp-http:
+    label: Tiny Go MCP — streamable HTTP (Fly.io)
+    binding: default
+    transport:
+      type: streamable_http
+      url: https://tiny-go-mcp-http.fly.dev
+
+  # Paste a streamable HTTP URL from Smithery, Glama, or your own deployment.
+  # Example (after you create a server on Smithery): export MCP_REMOTE_URL='https://server.smithery.ai/.../mcp'
+  smithery-remote:
+    label: Remote MCP via MCP_REMOTE_URL (streamable HTTP)
+    binding: default
+    transport:
+      type: streamable_http
+      url: ${MCP_REMOTE_URL}
+    auth:
+      bearer_env: MCP_SONAR_BEARER_TOKEN

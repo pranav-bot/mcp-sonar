@@ -68,7 +68,7 @@ def print_single_report(report: SingleTargetReport, *, verbose: bool = False) ->
         cells = _scenario_row_cells(scenario)
         table.add_row(scenario.scenario_id, *cells)
     console.print(table)
-    if verbose or report.suite_id in ("mcp-lens", "agentic-mcp", "mcp-load"):
+    if verbose or report.suite_id in ("mcp-lens", "agentic-mcp", "mcp-load", "mcp-context"):
         print_scenario_details(report)
 
 
@@ -109,7 +109,7 @@ def print_compare_report(report: CompareReport, *, verbose: bool = False) -> Non
             left.functional_message[:40],
         )
     console.print(table)
-    if verbose or report.suite_id in ("mcp-lens", "agentic-mcp", "mcp-load"):
+    if verbose or report.suite_id in ("mcp-lens", "agentic-mcp", "mcp-load", "mcp-context"):
         print_compare_scenario_details(report)
 
 

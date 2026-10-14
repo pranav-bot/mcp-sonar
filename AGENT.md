@@ -74,6 +74,12 @@ Keep **CREDITS.md** updated when adding or changing integrations with external e
 - Functional check: `check_lens_gate` in `checks/builtin.py`.
 - Do not vendor MCP Lens; keep it as a git-sourced optional extra in `pyproject.toml`.
 
+### Context usage suite (`mcp-context`)
+
+- Static: `integrations/context_usage/` estimates tokens for tools JSON plus prompts/resources (`tiktoken` via `--extra context-tokens`, else chars/4).
+- LLM: uses `llm.json` and `llm.registry` for an efficiency score (not token counting via provider APIs).
+- CLI: `--context-mode`, `--context-budget`, `--context-min-llm-score` (suite-only flags).
+
 ### Agentic Eval Flow suite (`agentic-mcp`)
 
 - **[RHEcosystemAppEng/agentic_eval_flow](https://github.com/RHEcosystemAppEng/agentic_eval_flow)** (Apache-2.0): MCPChecker submission layout and report model; aggregation adapted in `integrations/agentic_eval_flow/aggregate.py` from upstream `scripts/aggregate_mcpchecker.py`.

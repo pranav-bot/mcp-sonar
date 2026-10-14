@@ -17,6 +17,8 @@ uv sync --group dev
 cp config/targets.example.yaml config/targets.yaml
 ```
 
+**Try public servers without writing your own:** copy [config/targets.online.example.yaml](config/targets.online.example.yaml) and follow [config/examples/online-mcp-context.md](config/examples/online-mcp-context.md) (npm stdio servers + optional remote HTTP).
+
 ## Targets (`config/targets.yaml`)
 
 Each target is a named MCP endpoint:
@@ -31,6 +33,14 @@ Each target is a named MCP endpoint:
 ## Suites
 
 **Built-in:** `mcp-smoke` — `tools/list` via `__list_tools__`.
+
+**Built-in:** `mcp-context` — context window / token usage for tools, prompts, and resources (static estimate + optional LLM review).
+
+```bash
+uv sync --extra context-tokens   # optional: tiktoken for accurate static counts
+sonar run --config config/targets.yaml --target local-http --suite mcp-context --context-mode static
+sonar run ... --suite mcp-context --context-mode both --context-budget 32000 --context-min-llm-score 70
+```
 
 **Built-in:** `mcp-load` — parallel connection stress test (N sessions invoke the same tool each iteration).
 

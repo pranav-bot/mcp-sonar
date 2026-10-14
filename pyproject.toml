@@ -32,6 +32,9 @@ llm-vertex = [
 llm-anthropic-vertex = [
     "anthropic[vertex]>=0.40",
 ]
+context-tokens = [
+    "tiktoken>=0.7",
+]
 llm-all = [
     "mcp-lens",
     "anthropic>=0.40",
