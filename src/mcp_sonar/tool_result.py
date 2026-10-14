@@ -5,7 +5,7 @@ from typing import Any
 
 import mcp_types as types
 
-from mcp_benchmarker.core.types import ToolOutcome
+from mcp_sonar.core.types import ToolOutcome
 
 
 def _is_error(result: types.CallToolResult) -> bool:

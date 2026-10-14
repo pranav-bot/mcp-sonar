@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from mcp_benchmarker.checks.builtin import check_contains_text, check_expect_error
-from mcp_benchmarker.core.types import ToolOutcome
+from mcp_sonar.checks.builtin import check_contains_text, check_expect_error
+from mcp_sonar.core.types import ToolOutcome
 
 
 def test_contains_text() -> None:

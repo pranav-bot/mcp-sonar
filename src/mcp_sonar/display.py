@@ -3,9 +3,9 @@ from __future__ import annotations
 from rich.console import Console
 from rich.table import Table
 
-from mcp_benchmarker.config import TargetConfig, TargetsFile
-from mcp_benchmarker.target import ConnectedTarget
-from mcp_benchmarker.transport import TransportInfo, transport_info
+from mcp_sonar.config import TargetConfig, TargetsFile
+from mcp_sonar.target import ConnectedTarget
+from mcp_sonar.transport import TransportInfo, transport_info
 
 _stderr_console = Console(stderr=True)
 _stdout_console = Console()

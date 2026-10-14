@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mcp_benchmarker.core.types import TimingStats
+from mcp_sonar.core.types import TimingStats
 
 
 def _percentile(sorted_values: list[float], p: float) -> float:

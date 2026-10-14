@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp_benchmarker.suite.yaml_suite import suite_from_yaml
+from mcp_sonar.suite.yaml_suite import suite_from_yaml
 
 
 def test_load_everything_smoke_suite() -> None:

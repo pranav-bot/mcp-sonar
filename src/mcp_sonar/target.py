@@ -12,14 +12,14 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp.client.streamable_http import streamable_http_client
 
-from mcp_benchmarker.config import (
+from mcp_sonar.config import (
     StdioTransportConfig,
     StreamableHttpTransportConfig,
     TargetConfig,
 )
-from mcp_benchmarker.core.types import ToolOutcome
-from mcp_benchmarker.tool_result import outcome_from_call, outcome_from_exception
-from mcp_benchmarker.transport import TransportInfo, transport_info
+from mcp_sonar.core.types import ToolOutcome
+from mcp_sonar.tool_result import outcome_from_call, outcome_from_exception
+from mcp_sonar.transport import TransportInfo, transport_info
 
 
 @dataclass(frozen=True)
@@ -118,7 +118,6 @@ async def connect_target(name: str, config: TargetConfig) -> AsyncIterator[Conne
             async with streamable_http_client(transport.url, http_client=http_client) as (
                 read_stream,
                 write_stream,
-                _,
             ):
                 async with _connected_session(name, config, read_stream, write_stream) as connected:
                     yield connected

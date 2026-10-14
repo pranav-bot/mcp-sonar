@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mcp_benchmarker.core.stats import timing_stats_ms
+from mcp_sonar.core.stats import timing_stats_ms
 
 
 def test_timing_stats_empty() -> None:

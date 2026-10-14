@@ -5,10 +5,10 @@ from typing import Any
 
 import pytest
 
-from mcp_benchmarker.core.runner import run_scenario_on_target
-from mcp_benchmarker.core.types import ToolOutcome
-from mcp_benchmarker.suite.registry import get_suite
-from mcp_benchmarker.transport import TransportInfo
+from mcp_sonar.core.runner import run_scenario_on_target
+from mcp_sonar.core.types import ToolOutcome
+from mcp_sonar.suite.registry import get_suite
+from mcp_sonar.transport import TransportInfo
 
 
 @dataclass

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from mcp_benchmarker.checks.builtin import check_list_tools_nonempty, check_not_error
-from mcp_benchmarker.suite.base import ScenarioStep, Suite
+from mcp_sonar.checks.builtin import check_list_tools_nonempty, check_not_error
+from mcp_sonar.suite.base import ScenarioStep, Suite
 
 DEFAULT_BINDING = "default"
 
@@ -31,6 +31,6 @@ class McpSmokeSuite(Suite):
 
 
 def register() -> None:
-    from mcp_benchmarker.suite.registry import register_suite  # noqa: PLC0415
+    from mcp_sonar.suite.registry import register_suite  # noqa: PLC0415
 
     register_suite(McpSmokeSuite())

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import click
 
-from mcp_benchmarker.config import load_targets, require_targets_path, resolve_target
-from mcp_benchmarker.target import ConnectedTarget, connect_target
+from mcp_sonar.config import load_targets, require_targets_path, resolve_target
+from mcp_sonar.target import ConnectedTarget, connect_target
 
 
 @asynccontextmanager

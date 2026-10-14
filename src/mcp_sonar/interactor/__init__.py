@@ -1,6 +1,6 @@
 """CLI-oriented helpers for MCP interaction (no LLM)."""
 
-from mcp_benchmarker.interactor.format import (
+from mcp_sonar.interactor.format import (
     print_prompts_table,
     print_resources_table,
     print_server_info,

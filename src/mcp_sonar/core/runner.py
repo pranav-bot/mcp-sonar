@@ -3,16 +3,16 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from mcp_benchmarker.core.stats import timing_stats_ms
-from mcp_benchmarker.core.types import (
+from mcp_sonar.core.stats import timing_stats_ms
+from mcp_sonar.core.types import (
     CompareReport,
     CompareScenarioRow,
     ScenarioRunResult,
     SingleTargetReport,
 )
-from mcp_benchmarker.suite.base import ResolvedStep, resolve_step
-from mcp_benchmarker.suite.registry import Suite
-from mcp_benchmarker.target import ConnectedTarget
+from mcp_sonar.suite.base import ResolvedStep, resolve_step
+from mcp_sonar.suite.registry import Suite
+from mcp_sonar.target import ConnectedTarget
 
 
 def _transport_fields(target: ConnectedTarget) -> dict[str, str]:
@@ -26,7 +26,7 @@ def _transport_fields(target: ConnectedTarget) -> dict[str, str]:
 async def _invoke_resolved(target: ConnectedTarget, resolved: ResolvedStep) -> Any:
     if resolved.tool_name == "__list_tools__":
         names = await target.list_tools()
-        from mcp_benchmarker.core.types import ToolOutcome  # noqa: PLC0415
+        from mcp_sonar.core.types import ToolOutcome  # noqa: PLC0415
 
         text = "\n".join(names)
         return ToolOutcome(

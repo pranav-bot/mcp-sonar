@@ -4,7 +4,7 @@ import json
 
 import mcp_types as types
 
-from mcp_benchmarker.interactor.format import tool_definition_to_dict, tools_as_json
+from mcp_sonar.interactor.format import tool_definition_to_dict, tools_as_json
 
 
 def test_tool_definition_to_dict_includes_schema() -> None:

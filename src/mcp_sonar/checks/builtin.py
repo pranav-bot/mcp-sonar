@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from mcp_benchmarker.core.types import ToolOutcome
+from mcp_sonar.core.types import ToolOutcome
 
 CheckFn = type(lambda o: (True, ""))  # noqa: E731 — documentation only
 

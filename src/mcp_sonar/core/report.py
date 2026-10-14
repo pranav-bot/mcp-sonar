@@ -8,9 +8,9 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
-from mcp_benchmarker.core.types import CompareReport, ReportFormat, ScenarioRunResult, SingleTargetReport
-from mcp_benchmarker.display import print_benchmark_target_header, print_compare_targets_header
-from mcp_benchmarker.transport import KIND_LABEL, TransportInfo
+from mcp_sonar.core.types import CompareReport, ReportFormat, ScenarioRunResult, SingleTargetReport
+from mcp_sonar.display import print_benchmark_target_header, print_compare_targets_header
+from mcp_sonar.transport import KIND_LABEL, TransportInfo
 
 
 def _scenario_row_cells(result: ScenarioRunResult) -> list[str]:

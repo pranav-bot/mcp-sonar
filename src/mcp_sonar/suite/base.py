@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from mcp_benchmarker.core.types import ToolOutcome
+from mcp_sonar.core.types import ToolOutcome
 
 FunctionalCheck = Callable[[ToolOutcome], tuple[bool, str]]
 BindingFactory = Callable[[], tuple[str, dict[str, Any]]]

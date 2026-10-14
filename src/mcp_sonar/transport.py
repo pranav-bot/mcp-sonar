@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from mcp_benchmarker.config import (
+from mcp_sonar.config import (
     StdioTransportConfig,
     StreamableHttpTransportConfig,
     TargetConfig,

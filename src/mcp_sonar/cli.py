@@ -5,12 +5,12 @@ from pathlib import Path
 
 import click
 
-from mcp_benchmarker.config import default_targets_path, load_targets, require_targets_path, resolve_target
-from mcp_benchmarker.core.report import emit_report, print_compare_report, print_single_report
-from mcp_benchmarker.core.runner import compare_targets, run_suite_on_target
-from mcp_benchmarker.core.types import ReportFormat
-from mcp_benchmarker.display import print_targets_table
-from mcp_benchmarker.interactor.tools_cmds import (
+from mcp_sonar.config import default_targets_path, load_targets, require_targets_path, resolve_target
+from mcp_sonar.core.report import emit_report, print_compare_report, print_single_report
+from mcp_sonar.core.runner import compare_targets, run_suite_on_target
+from mcp_sonar.core.types import ReportFormat
+from mcp_sonar.display import print_targets_table
+from mcp_sonar.interactor.tools_cmds import (
     run_prompts_list,
     run_resources_list,
     run_tools_call,
@@ -18,8 +18,8 @@ from mcp_benchmarker.interactor.tools_cmds import (
     run_tools_info,
     run_tools_list,
 )
-from mcp_benchmarker.suite.registry import ensure_suites_loaded, get_suite, list_suites
-from mcp_benchmarker.target import connect_target
+from mcp_sonar.suite.registry import ensure_suites_loaded, get_suite, list_suites
+from mcp_sonar.target import connect_target
 
 
 def _resolve_config(path: Path | None) -> Path:
@@ -35,7 +35,7 @@ def _config_dir(config_file: Path) -> Path:
 
 @click.group()
 def main() -> None:
-    """Benchmark and interact with MCP servers (stdio or streamable HTTP)."""
+    """mcp-sonar: benchmark and interact with MCP servers (stdio or streamable HTTP)."""
 
 
 @main.command("list-suites")
@@ -277,6 +277,11 @@ def compare_cmd(
             raise SystemExit(1)
 
     asyncio.run(_run())
+
+
+from mcp_sonar.interactor_cli import register_flat_commands  # noqa: E402
+
+register_flat_commands(main)
 
 
 if __name__ == "__main__":

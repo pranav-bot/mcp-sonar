@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from mcp_benchmarker.config import StdioTransportConfig, StreamableHttpTransportConfig, TargetConfig
-from mcp_benchmarker.transport import transport_info
+from mcp_sonar.config import StdioTransportConfig, StreamableHttpTransportConfig, TargetConfig
+from mcp_sonar.transport import transport_info
 
 
 def test_transport_info_stdio() -> None:

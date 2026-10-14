@@ -7,9 +7,9 @@ from typing import Literal
 
 import click
 
-from mcp_benchmarker.core.types import ToolOutcome
-from mcp_benchmarker.display import print_connected_target
-from mcp_benchmarker.interactor.format import (
+from mcp_sonar.core.types import ToolOutcome
+from mcp_sonar.display import print_connected_target
+from mcp_sonar.interactor.format import (
     print_prompts_table,
     print_resources_table,
     print_server_info,
@@ -17,8 +17,8 @@ from mcp_benchmarker.interactor.format import (
     tool_definition_to_dict,
     tools_as_json,
 )
-from mcp_benchmarker.interactor.session import open_target, parse_tool_args
-from mcp_benchmarker.target import ConnectedTarget
+from mcp_sonar.interactor.session import open_target, parse_tool_args
+from mcp_sonar.target import ConnectedTarget
 
 ToolsListFormat = Literal["table", "names", "json"]
 

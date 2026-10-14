@@ -98,7 +98,7 @@ def server_info_dict(init: types.InitializeResult) -> dict[str, Any]:
 
 
 def print_server_info(connected: object) -> None:
-    from mcp_benchmarker.target import ConnectedTarget  # noqa: PLC0415
+    from mcp_sonar.target import ConnectedTarget  # noqa: PLC0415
 
     if not isinstance(connected, ConnectedTarget):
         raise TypeError("expected ConnectedTarget")

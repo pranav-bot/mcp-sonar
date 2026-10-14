@@ -5,8 +5,8 @@ from typing import Any
 
 import yaml
 
-from mcp_benchmarker.checks import get_check
-from mcp_benchmarker.suite.base import ScenarioStep, Suite
+from mcp_sonar.checks import get_check
+from mcp_sonar.suite.base import ScenarioStep, Suite
 
 
 def _call_factory(tool: str, arguments: dict[str, Any]) -> Any:

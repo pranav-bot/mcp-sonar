@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp_benchmarker.suite.base import Suite
+from mcp_sonar.suite.base import Suite
 
 _SUITES: dict[str, Suite] = {}
 _LOADED_DIRS: set[Path] = set()
@@ -31,7 +31,7 @@ def load_suites_from_directory(directory: Path) -> int:
     if directory in _LOADED_DIRS or not directory.is_dir():
         return 0
     count = 0
-    from mcp_benchmarker.suite.yaml_suite import suite_from_yaml  # noqa: PLC0415
+    from mcp_sonar.suite.yaml_suite import suite_from_yaml  # noqa: PLC0415
 
     for path in sorted(directory.glob("*.yaml")) + sorted(directory.glob("*.yml")):
         suite = suite_from_yaml(path)
@@ -44,7 +44,7 @@ def load_suites_from_directory(directory: Path) -> int:
 
 
 def _load_builtin_suites() -> None:
-    from mcp_benchmarker.suite.mcp_smoke import register  # noqa: PLC0415
+    from mcp_sonar.suite.mcp_smoke import register  # noqa: PLC0415
 
     register()
 

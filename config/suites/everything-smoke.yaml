@@ -16,8 +16,8 @@ scenarios:
       default:
         tool: echo
         arguments:
-          message: mcp-benchmarker
+          message: mcp-sonar
     check:
       name: contains_text
       args:
-        text: mcp-benchmarker
+        text: mcp-sonar
