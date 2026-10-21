@@ -11,6 +11,8 @@ from rich.table import Table
 from mcp_sonar.display import print_connected_target
 from mcp_sonar.interactor.agent import AgentRunResult, run_agent
 from mcp_sonar.interactor.session import open_target
+from mcp_sonar.local_bootstrap import bootstrap_local_workspace
+from mcp_sonar.llm.config import resolve_llm_config_path
 from mcp_sonar.llm.registry import get_adapter_for_config, get_default_llm_name
 
 console = Console()
@@ -69,6 +71,10 @@ async def run_agent_cmd(
     max_steps: int,
     fmt: AgentFormat,
 ) -> AgentRunResult:
+    bootstrap_local_workspace(config_path)
+    llm_path = resolve_llm_config_path()
+    if llm_path is not None:
+        console.print(f"[dim]LLM config: {llm_path}[/dim]")
     config_name = _resolve_llm_config_name(llm_config)
     adapter = get_adapter_for_config(config_name)
 
