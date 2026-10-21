@@ -138,6 +138,9 @@ sonar tools describe --config config/targets.yaml --target everything-stdio --to
 sonar tools info --config config/targets.yaml --target everything-stdio
 
 # One-off JSON call
+sonar tools benchmark --config config/targets.yaml --target everything-stdio \
+  --tool echo --args '{"message":"ping"}' --warmup 2 --iterations 20
+
 sonar tools call --config config/targets.yaml --target everything-stdio \
   --tool echo --args '{"message":"hello"}'
 

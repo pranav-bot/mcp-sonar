@@ -58,6 +58,7 @@ from mcp_sonar.interactor.tools_cmds import (
     run_prompts_list,
     run_resources_list,
     run_tools_batch,
+    run_tools_benchmark,
     run_tools_call,
     run_tools_describe,
     run_tools_info,
@@ -367,6 +368,57 @@ def tools_call_cmd(
             config_path,
             args_json=args_json,
             args_file=args_file,
+        )
+
+    asyncio.run(_run())
+
+
+@tools_group.command("benchmark")
+@with_target_option(required=False)
+@click.option("--tool", "tool_name", required=False, help="Tool name (required unless set in --args-file).")
+@click.option("--args", "args_json", default=None, help=ARGS_JSON_HELP)
+@click.option(
+    "--args-file",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help=ARGS_FILE_HELP,
+)
+@click.option("--warmup", default=2, show_default=True, help=WARMUP_HELP)
+@click.option("--iterations", default=10, show_default=True, help=ITERATIONS_HELP)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "json"]),
+    default="rich",
+    show_default=True,
+)
+@with_config_option()
+def tools_benchmark_cmd(
+    target: str | None,
+    tool_name: str | None,
+    args_json: str | None,
+    args_file: Path | None,
+    config_path: Path | None,
+    warmup: int,
+    iterations: int,
+    fmt: str,
+) -> None:
+    """\b
+    Measure MCP tool call latency (warmup + timed iterations on one session).
+
+    Same arguments as `sonar tools call`. Reports min/p50/p95/max in milliseconds.
+    """
+
+    async def _run() -> None:
+        await run_tools_benchmark(
+            target,
+            tool_name,
+            config_path,
+            args_json=args_json,
+            args_file=args_file,
+            warmup=warmup,
+            iterations=iterations,
+            fmt=fmt,  # type: ignore[arg-type]
         )
 
     asyncio.run(_run())

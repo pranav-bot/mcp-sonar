@@ -39,6 +39,7 @@ def print_agent_report(result: AgentRunResult, *, fmt: AgentFormat) -> None:
     table.add_column("#", style="dim")
     table.add_column("Kind")
     table.add_column("Tool")
+    table.add_column("Timing (ms)")
     table.add_column("Detail")
     for step in result.steps:
         detail = step.note or step.llm_text or ""
@@ -46,13 +47,27 @@ def print_agent_report(result: AgentRunResult, *, fmt: AgentFormat) -> None:
             detail = (step.tool_result_text or "")[:200]
             if step.tool_is_error:
                 detail = f"[error] {detail}"
+        timing_parts: list[str] = []
+        if step.select_tool_ms is not None:
+            timing_parts.append(f"llm pick {step.select_tool_ms:.0f}")
+        if step.tool_invoke_ms is not None:
+            timing_parts.append(f"tool {step.tool_invoke_ms:.0f}")
+        if step.generate_answer_ms is not None:
+            timing_parts.append(f"llm answer {step.generate_answer_ms:.0f}")
         table.add_row(
             str(step.index),
             step.kind,
             step.tool_name or "—",
+            ", ".join(timing_parts) or "—",
             detail.replace("\n", " ")[:120],
         )
     console.print(table)
+    if result.timing is not None:
+        t = result.timing
+        console.print(
+            f"[dim]Totals: wall {t.wall_ms:.0f} ms · LLM {t.llm_ms:.0f} ms · "
+            f"MCP tools {t.tool_ms:.0f} ms[/dim]"
+        )
     console.print(
         Panel(
             result.final_answer or "(empty)",
