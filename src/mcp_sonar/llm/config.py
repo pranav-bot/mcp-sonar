@@ -15,7 +15,12 @@ def resolve_llm_config_path(explicit: Path | None = None) -> Path | None:
     if env_path:
         path = Path(env_path).expanduser()
         return path if path.is_file() else None
-    for candidate in (Path.cwd() / "llm.json", Path.cwd() / "config" / "llm.json"):
+    root = Path.cwd()
+    for candidate in (
+        root / "llm.json",
+        root / "local" / "llm.json",
+        root / "config" / "llm.json",
+    ):
         if candidate.is_file():
             return candidate
     return None
@@ -67,10 +72,11 @@ def summarize_configs(data: dict[str, Any] | None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for name, cfg in sorted(data.get("configs", {}).items()):
         provider = str(cfg.get("provider", ""))
+        maas_like = provider in ("maas", "models-corps")
         has_creds = bool(
             cfg.get("api_key")
             or cfg.get("project")
-            or (provider == "models-corps" and cfg.get("base_url") and cfg.get("api_key"))
+            or (maas_like and cfg.get("base_url") and cfg.get("api_key"))
         )
         rows.append(
             {

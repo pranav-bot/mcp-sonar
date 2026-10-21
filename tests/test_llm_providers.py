@@ -5,20 +5,31 @@ from pathlib import Path
 
 import pytest
 
-from mcp_sonar.llm.adapters.models_corps import (
+from mcp_sonar.llm.adapters.maas import (
     coerce_tls_verify,
-    models_corps_family_path,
-    models_corps_predict_url,
+    maas_chat_completions_url,
+    maas_models_url,
+    mcp_tools_to_openai,
 )
 from mcp_sonar.llm.config import load_llm_file
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
-from mcp_sonar.llm.registry import MODELS_CORPS_DEFAULT_RATE_LIMIT, build_adapter
+from mcp_sonar.llm.registry import MAAS_DEFAULT_RATE_LIMIT, MODELS_CORPS_DEFAULT_RATE_LIMIT, build_adapter
 
 
-def test_models_corps_family_path() -> None:
-    assert models_corps_family_path("claude-3-5-haiku-20241022") == "haiku"
-    assert models_corps_family_path("claude-opus-4-20250514") == "opus"
-    assert models_corps_family_path("claude-sonnet-4-20250514") == "sonnet"
+def test_maas_urls() -> None:
+    base = "https://models.corp.redhat.com/oai/v1"
+    assert maas_models_url(base) == "https://models.corp.redhat.com/oai/v1/models"
+    assert (
+        maas_chat_completions_url(base)
+        == "https://models.corp.redhat.com/oai/v1/chat/completions"
+    )
+
+
+def test_mcp_tools_to_openai() -> None:
+    tools = [{"name": "ping", "description": "Ping", "inputSchema": {"type": "object"}}]
+    out = mcp_tools_to_openai(tools)
+    assert out[0]["type"] == "function"
+    assert out[0]["function"]["name"] == "ping"
 
 
 def test_coerce_tls_verify() -> None:
@@ -26,11 +37,6 @@ def test_coerce_tls_verify() -> None:
     assert coerce_tls_verify("false") is False
     assert coerce_tls_verify("true") is True
     assert coerce_tls_verify(None) is True
-
-
-def test_models_corps_predict_url() -> None:
-    url = models_corps_predict_url("https://gateway.example", "claude-sonnet-4-20250514")
-    assert url == "https://gateway.example/sonnet/models/claude-sonnet-4-20250514:rawPredict"
 
 
 @pytest.mark.asyncio
@@ -46,6 +52,7 @@ async def test_minute_rate_limiter_waits_for_slot() -> None:
 
 def test_load_llm_file_resolves_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TEST_LLM_KEY", "secret")
+    monkeypatch.setenv("TEST_MAAS_URL", "https://models.corp.redhat.com/oai/v1")
     path = tmp_path / "llm.json"
     path.write_text(
         json.dumps(
@@ -53,11 +60,11 @@ def test_load_llm_file_resolves_env(tmp_path: Path, monkeypatch: pytest.MonkeyPa
                 "default": "corp",
                 "configs": {
                     "corp": {
-                        "provider": "models-corps",
-                        "model": "claude-sonnet-4-20250514",
+                        "provider": "maas",
+                        "model": "Qwen3-14B",
                         "api_key_env": "TEST_LLM_KEY",
-                        "base_url": "https://gateway.example",
-                        "rate_limit_per_minute": 6,
+                        "base_url_env": "TEST_MAAS_URL",
+                        "rate_limit_per_minute": 10,
                     }
                 },
             }
@@ -68,16 +75,17 @@ def test_load_llm_file_resolves_env(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert data is not None
     cfg = data["configs"]["corp"]
     assert cfg["api_key"] == "secret"
-    assert cfg["rate_limit_per_minute"] == 6
+    assert cfg["base_url"] == "https://models.corp.redhat.com/oai/v1"
+    assert cfg["rate_limit_per_minute"] == 10
 
 
-def test_build_adapter_models_corps_wraps_rate_limit() -> None:
+def test_build_adapter_maas_wraps_rate_limit() -> None:
     adapter = build_adapter(
         {
-            "provider": "models-corps",
-            "model": "claude-sonnet-4-20250514",
+            "provider": "maas",
+            "model": "Qwen3-14B",
             "api_key": "k",
-            "base_url": "https://gateway.example",
+            "base_url": "https://models.corp.redhat.com/oai/v1",
         }
     )
     from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
@@ -85,15 +93,32 @@ def test_build_adapter_models_corps_wraps_rate_limit() -> None:
     assert isinstance(adapter, RateLimitedAdapter)
 
 
-def test_build_adapter_models_corps_default_rate_limit() -> None:
-    assert MODELS_CORPS_DEFAULT_RATE_LIMIT == 6
+def test_build_adapter_models_corps_alias() -> None:
+    adapter = build_adapter(
+        {
+            "provider": "models-corps",
+            "model": "Qwen3-14B",
+            "api_key": "k",
+            "base_url": "https://models.corp.redhat.com/oai/v1",
+        }
+    )
+    from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
+
+    assert isinstance(adapter, RateLimitedAdapter)
 
 
-def test_build_adapter_requires_base_url() -> None:
+def test_maas_default_rate_limit_sandbox() -> None:
+    assert MAAS_DEFAULT_RATE_LIMIT == 10
+    assert MODELS_CORPS_DEFAULT_RATE_LIMIT == 10
+
+
+def test_build_adapter_requires_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("MAAS_BASE_URL", raising=False)
+    monkeypatch.delenv("MODELS_CORPS_BASE_URL", raising=False)
     with pytest.raises(ValueError, match="base_url"):
         build_adapter(
             {
-                "provider": "models-corps",
+                "provider": "maas",
                 "model": "m",
                 "api_key": "k",
             }

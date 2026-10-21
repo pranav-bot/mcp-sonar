@@ -53,7 +53,7 @@ from mcp_sonar.core.report import emit_report, print_compare_report, print_singl
 from mcp_sonar.core.runner import compare_targets, run_suite_on_target
 from mcp_sonar.core.types import ReportFormat
 from mcp_sonar.display import print_targets_table
-from mcp_sonar.llm.cli_cmds import run_llm_list
+from mcp_sonar.llm.cli_cmds import run_llm_list, run_llm_models
 from mcp_sonar.interactor.tools_cmds import (
     run_prompts_list,
     run_resources_list,
@@ -193,7 +193,7 @@ def main() -> None:
 
 @main.group("llm", help="LLM provider configs for MCP Lens (--suite mcp-lens --lens-mode llm).")
 def llm_group() -> None:
-    """Inspect llm.json provider entries (Anthropic, OpenAI, Vertex, models-corps)."""
+    """Inspect llm.json provider entries (Anthropic, OpenAI, Vertex, MaaS)."""
 
 
 @llm_group.command("list")
@@ -209,6 +209,26 @@ def llm_list_cmd(config_path: Path | None, fmt: str) -> None:
     """List named LLM providers, models, and rate limits from llm.json."""
 
     run_llm_list(config_path, fmt)
+
+
+@llm_group.command("models")
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    default=None,
+    help="Path to llm.json (default: MCP_SONAR_LLM_CONFIG, ./llm.json, or config/llm.json).",
+)
+@click.option(
+    "--name",
+    "config_name",
+    default=None,
+    help="Named llm.json config (default: file's default entry).",
+)
+def llm_models_cmd(config_path: Path | None, config_name: str | None) -> None:
+    """List model IDs from Models.corp MaaS (GET /v1/models; requires VPN + API key)."""
+
+    run_llm_models(config_path, config_name)
 
 
 @main.command("list-suites")
@@ -546,6 +566,9 @@ def agent_run_cmd(
     """Connect to an MCP target, run an LLM agent loop, print tool calls and final answer."""
 
     from mcp_sonar.interactor.agent_cmds import run_agent_cmd  # noqa: PLC0415
+    from mcp_sonar.local_bootstrap import bootstrap_local_workspace  # noqa: PLC0415
+
+    bootstrap_local_workspace(config_path)
 
     if prompt_file is not None:
         text = prompt_file.read_text(encoding="utf-8").strip()

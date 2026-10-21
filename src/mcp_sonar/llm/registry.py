@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from mcp_sonar.llm.adapters.models_corps import ModelsCorpsAdapter, coerce_tls_verify
+from mcp_sonar.llm.adapters.maas import MAAS_DEFAULT_RATE_LIMIT, MAAS_PROVIDER, MaasAdapter, coerce_tls_verify
 from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
 from mcp_sonar.llm.config import get_default_config_name, load_llm_file, resolve_llm_config_path
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
 
 MODELS_CORPS_PROVIDER = "models-corps"
-MODELS_CORPS_DEFAULT_RATE_LIMIT = 6
+# Alias: same adapter as ``maas``; default rate limit matches MaaS sandbox (10 req/min).
+MODELS_CORPS_DEFAULT_RATE_LIMIT = MAAS_DEFAULT_RATE_LIMIT
 
 _LENS_PROVIDERS = frozenset({"mock", "anthropic", "openai", "vertexai", "anthropic-vertex"})
 
@@ -17,7 +19,8 @@ _INSTALL_HINTS = {
     "anthropic": "uv sync --extra llm-anthropic",
     "vertexai": "uv sync --extra llm-vertex",
     "anthropic-vertex": "uv sync --extra llm-anthropic-vertex",
-    MODELS_CORPS_PROVIDER: "uses httpx (already installed); set base_url_env and api_key_env",
+    MAAS_PROVIDER: "uses httpx; set MAAS_BASE_URL and MAAS_API_KEY (see config/llm.example.json)",
+    MODELS_CORPS_PROVIDER: "alias for maas — prefer provider maas and MAAS_* env vars",
 }
 
 
@@ -35,6 +38,32 @@ def get_default_llm_name() -> str | None:
     return get_default_config_name(load_llm_file())
 
 
+def _maas_credentials(cfg: dict[str, Any]) -> tuple[str, str]:
+    api_key = str(cfg.get("api_key") or os.environ.get("MAAS_API_KEY") or "")
+    base_url = str(cfg.get("base_url") or os.environ.get("MAAS_BASE_URL") or "")
+    if not api_key:
+        api_key = str(os.environ.get("MODELS_CORPS_API_KEY") or "")
+    if not base_url:
+        base_url = str(os.environ.get("MODELS_CORPS_BASE_URL") or "")
+    return api_key, base_url
+
+
+def build_maas_adapter(cfg: dict[str, Any]) -> MaasAdapter:
+    api_key, base_url = _maas_credentials(cfg)
+    verify = cfg.get("verify_ssl")
+    if verify is None and cfg.get("ca_bundle"):
+        verify = cfg.get("ca_bundle")
+    adapter = MaasAdapter(
+        model=str(cfg.get("model") or "Qwen3-14B"),
+        api_key=api_key,
+        base_url=base_url,
+        verify=coerce_tls_verify(verify),
+    )
+    per_minute = int(cfg.get("rate_limit_per_minute", MAAS_DEFAULT_RATE_LIMIT))
+    limiter = MinuteRateLimiter(per_minute)
+    return RateLimitedAdapter(adapter, limiter)  # type: ignore[return-value]
+
+
 def get_adapter_for_config(config_name: str) -> Any:
     data = load_llm_file()
     configs = data.get("configs") if data else None
@@ -49,19 +78,8 @@ def get_adapter_for_config(config_name: str) -> Any:
 
 def build_adapter(cfg: dict[str, Any]) -> Any:
     provider = str(cfg.get("provider", "")).strip()
-    if provider == MODELS_CORPS_PROVIDER:
-        verify = cfg.get("verify_ssl")
-        if verify is None and cfg.get("ca_bundle"):
-            verify = cfg.get("ca_bundle")
-        adapter = ModelsCorpsAdapter(
-            model=str(cfg.get("model") or "claude-sonnet-4-20250514"),
-            api_key=str(cfg.get("api_key") or ""),
-            base_url=str(cfg.get("base_url") or ""),
-            verify=coerce_tls_verify(verify),
-        )
-        per_minute = int(cfg.get("rate_limit_per_minute", MODELS_CORPS_DEFAULT_RATE_LIMIT))
-        limiter = MinuteRateLimiter(per_minute)
-        return RateLimitedAdapter(adapter, limiter)
+    if provider in (MAAS_PROVIDER, MODELS_CORPS_PROVIDER):
+        return build_maas_adapter(cfg)
 
     if provider in _LENS_PROVIDERS:
         try:
@@ -86,5 +104,5 @@ def build_adapter(cfg: dict[str, Any]) -> Any:
 
     raise ValueError(
         f"Unknown LLM provider '{provider}'. "
-        f"Supported: {', '.join(sorted(_LENS_PROVIDERS | {MODELS_CORPS_PROVIDER}))}"
+        f"Supported: {', '.join(sorted(_LENS_PROVIDERS | {MAAS_PROVIDER, MODELS_CORPS_PROVIDER}))}"
     )

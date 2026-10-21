@@ -19,3 +19,9 @@ class RateLimitedAdapter:
     async def generate_answer(self, tool_result: Any, user_prompt: str) -> str:
         await self._limiter.acquire()
         return await self._inner.generate_answer(tool_result, user_prompt)
+
+    async def list_model_ids(self) -> list[str]:
+        list_fn = getattr(self._inner, "list_model_ids", None)
+        if not callable(list_fn):
+            raise AttributeError("inner adapter does not support list_model_ids")
+        return await list_fn()

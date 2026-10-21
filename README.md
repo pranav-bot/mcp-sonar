@@ -86,10 +86,12 @@ Copy `config/llm.example.json` to `config/llm.json` (or `llm.json` in the projec
 | `openai` | `uv sync --extra llm-openai` |
 | `vertexai` (Gemini) | `uv sync --extra llm-vertex` |
 | `anthropic-vertex` | `uv sync --extra llm-anthropic-vertex` |
-| `models-corps` | httpx only; Vertex-style `rawPredict` URLs + Bearer token (`base_url_env`, `api_key_env`). **Sandbox rate limit: 6 requests/minute** (enforced client-side; default `rate_limit_per_minute`). |
+| `maas` | httpx only; OpenAI-compatible MaaS (`MAAS_BASE_URL`, `MAAS_API_KEY`, typically `https://…/oai/v1`). **Sandbox: 10 requests/minute per model** (client-side default `rate_limit_per_minute`). |
+| `models-corps` | Alias for `maas` (same adapter; legacy config name). |
 
 ```bash
 sonar llm list --config config/llm.json
+sonar llm models --config config/llm.json --name maas-sandbox   # VPN + key
 export MCP_SONAR_LLM_CONFIG=config/llm.json   # optional override
 ```
 
