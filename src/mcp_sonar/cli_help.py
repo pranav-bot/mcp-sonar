@@ -212,4 +212,5 @@ Examples:
   sonar tools list --target my-server --config config/targets.yaml
   sonar tools describe --target my-server --tool echo --config config/targets.yaml
   sonar tools call --target my-server --tool echo --args '{"message":"hi"}'
+  sonar tools benchmark --target my-server --tool echo --args '{"message":"hi"}'
 """

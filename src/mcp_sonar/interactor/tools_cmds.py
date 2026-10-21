@@ -5,9 +5,14 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Literal
 
+import json
+
 import click
+from rich.console import Console
+from rich.table import Table
 
 from mcp_sonar.core.types import ToolOutcome
+from mcp_sonar.interactor.tool_benchmark import ToolBenchmarkResult, benchmark_tool_call
 from mcp_sonar.display import print_connected_target
 from mcp_sonar.interactor.args_file import load_batch_file, resolve_invoke
 from mcp_sonar.interactor.format import (
@@ -130,6 +135,80 @@ async def run_tools_template(
             click.echo(text)
 
     await _with_connected(target, config_path, _action, announce=False)
+
+
+def print_tool_benchmark_report(result: ToolBenchmarkResult, *, fmt: Literal["rich", "json"]) -> None:
+    if fmt == "json":
+        click.echo(
+            json.dumps(
+                {
+                    "tool": result.tool_name,
+                    "arguments": result.arguments,
+                    "success_rate": result.success_rate,
+                    "last_error": result.last_error,
+                    "timing_ms": {
+                        "min": result.timing.min_ms,
+                        "p50": result.timing.p50_ms,
+                        "p95": result.timing.p95_ms,
+                        "max": result.timing.max_ms,
+                        "samples": result.timing.samples,
+                    },
+                },
+                indent=2,
+            )
+        )
+        return
+
+    console = Console()
+    table = Table(title=f"Tool latency — {result.tool_name}")
+    table.add_column("Metric")
+    table.add_column("ms")
+    table.add_row("min", f"{result.timing.min_ms:.1f}")
+    table.add_row("p50", f"{result.timing.p50_ms:.1f}")
+    table.add_row("p95", f"{result.timing.p95_ms:.1f}")
+    table.add_row("max", f"{result.timing.max_ms:.1f}")
+    table.add_row("samples", str(result.timing.samples))
+    table.add_row("success rate", f"{result.success_rate * 100:.0f}%")
+    if result.last_error and result.success_rate < 1.0:
+        table.add_row("last error", result.last_error[:80])
+    console.print(table)
+
+
+async def run_tools_benchmark(
+    target_cli: str | None,
+    tool_cli: str | None,
+    config_path: Path | None,
+    *,
+    args_json: str | None = None,
+    args_file: Path | None = None,
+    warmup: int,
+    iterations: int,
+    fmt: Literal["rich", "json"],
+) -> ToolBenchmarkResult:
+    tool_name, target_name, arguments = _resolve_call_params(
+        tool_cli=tool_cli,
+        target_cli=target_cli,
+        args_json=args_json,
+        args_file=args_file,
+    )
+
+    result_holder: list[ToolBenchmarkResult] = []
+
+    async def _run(connected: ConnectedTarget) -> None:
+        result_holder.append(
+            await benchmark_tool_call(
+                connected,
+                tool_name,
+                arguments,
+                warmup=warmup,
+                iterations=iterations,
+            )
+        )
+
+    await _with_connected(target_name, config_path, _run)
+    result = result_holder[0]
+    print_tool_benchmark_report(result, fmt=fmt)
+    return result
 
 
 async def run_tools_call(

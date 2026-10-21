@@ -54,3 +54,7 @@ async def test_run_agent_tool_then_final() -> None:
     assert result.steps[0].tool_name == "echo"
     assert result.steps[1].kind == "final"
     assert "echo:ping" in result.final_answer
+    assert result.timing is not None
+    assert result.timing.tool_ms >= 0
+    assert result.steps[0].tool_invoke_ms is not None
+    assert result.steps[1].generate_answer_ms is not None
