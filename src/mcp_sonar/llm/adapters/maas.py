@@ -129,8 +129,16 @@ class MaasAdapter:
         }
 
     async def _request(self, method: str, url: str, *, json_body: dict | None = None) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=self._timeout, verify=self._verify) as client:
-            response = await client.request(method, url, headers=self._headers(), json=json_body)
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout, verify=self._verify) as client:
+                response = await client.request(method, url, headers=self._headers(), json=json_body)
+        except httpx.ConnectError as err:
+            if self._verify is True and "certificate" in str(err).lower():
+                raise RuntimeError(
+                    f"{err}\n\nSet MAAS_VERIFY_SSL=false (or MODELS_CORPS_VERIFY_SSL) in local/.env "
+                    "if your environment uses an internal CA, or set verify_ssl_env in llm.json."
+                ) from err
+            raise
         if response.status_code == 429:
             raise RuntimeError(
                 "MaaS rate limit exceeded (HTTP 429). Sandbox tier is typically 10 requests/minute "

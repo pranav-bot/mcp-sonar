@@ -13,7 +13,12 @@ from mcp_sonar.llm.adapters.maas import (
 )
 from mcp_sonar.llm.config import load_llm_file
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
-from mcp_sonar.llm.registry import MAAS_DEFAULT_RATE_LIMIT, MODELS_CORPS_DEFAULT_RATE_LIMIT, build_adapter
+from mcp_sonar.llm.registry import (
+    MAAS_DEFAULT_RATE_LIMIT,
+    MODELS_CORPS_DEFAULT_RATE_LIMIT,
+    _resolve_maas_verify,
+    build_adapter,
+)
 
 
 def test_maas_urls() -> None:
@@ -30,6 +35,12 @@ def test_mcp_tools_to_openai() -> None:
     out = mcp_tools_to_openai(tools)
     assert out[0]["type"] == "function"
     assert out[0]["function"]["name"] == "ping"
+
+
+def test_resolve_maas_verify_legacy_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("MAAS_VERIFY_SSL", raising=False)
+    monkeypatch.setenv("MODELS_CORPS_VERIFY_SSL", "false")
+    assert _resolve_maas_verify({}) is False
 
 
 def test_coerce_tls_verify() -> None:
