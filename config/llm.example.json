@@ -28,6 +28,7 @@
       "model": "claude-sonnet-4-20250514",
       "base_url_env": "MODELS_CORPS_BASE_URL",
       "api_key_env": "MODELS_CORPS_API_KEY",
+      "verify_ssl_env": "MODELS_CORPS_VERIFY_SSL",
       "rate_limit_per_minute": 6
     }
   }

@@ -15,6 +15,7 @@ This repository is an **open-source** toolkit for benchmarking **and** interacti
 |------|---------|
 | **Benchmarking** | Suites (`run`, `compare`), latency stats, functional checks |
 | **Interaction** | List/describe/call tools (and related MCP surfaces) without an LLM — CLI only |
+| **Agent** | `sonar agent run` — LLM loop over MCP tools with a printed/JSON step trace (`interactor/agent.py`) |
 
 Shared connection logic lives in `src/mcp_sonar/target.py` (`connect_target`, `ConnectedTarget`). Transport kind and endpoints are defined in `transport.py`; user-visible headings and tables use `display.py`. Benchmark runners and the interactor CLI must reuse these modules — do not duplicate MCP session wiring or transport formatting.
 

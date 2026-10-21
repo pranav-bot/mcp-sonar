@@ -11,3 +11,6 @@ wheels/
 
 # Local target config (may reference tokens)
 config/targets.yaml
+
+# Personal MCP server sandboxes (paths, tokens, employer-specific endpoints)
+local/

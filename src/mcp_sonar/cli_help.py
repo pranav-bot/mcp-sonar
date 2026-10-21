@@ -185,6 +185,24 @@ More:
   https://github.com/pranav-bot/mcp-sonar
 """
 
+AGENT_GROUP_HELP = """\b
+Run an LLM against an MCP target: the model may call tools in a loop until it
+answers. Each tool invocation is recorded (name, arguments, result).
+
+Requires llm.json (or MCP_SONAR_LLM_CONFIG). Uses the same adapters as mcp-lens
+and mcp-context (Anthropic, OpenAI, Vertex, models-corps).
+
+Examples:
+  sonar agent run --target my-server --prompt "List CVEs and summarize"
+  sonar agent run --target my-server --prompt-file task.txt --format json
+"""
+
+AGENT_MAX_STEPS_HELP = "Maximum LLM tool-selection rounds before forcing a final answer (default: 8)."
+
+AGENT_LLM_CONFIG_HELP = "Named entry from llm.json (default: the file's default provider)."
+
+AGENT_PROMPT_FILE_HELP = "Read the user prompt from a text file instead of --prompt."
+
 TOOLS_GROUP_HELP = """\b
 Interact with one MCP server (no LLM): list/describe/call tools and optional
 resources or prompts. Every command prints the target name, transport

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp_sonar.llm.adapters.models_corps import ModelsCorpsAdapter
+from mcp_sonar.llm.adapters.models_corps import ModelsCorpsAdapter, coerce_tls_verify
 from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
 from mcp_sonar.llm.config import get_default_config_name, load_llm_file, resolve_llm_config_path
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
@@ -50,10 +50,14 @@ def get_adapter_for_config(config_name: str) -> Any:
 def build_adapter(cfg: dict[str, Any]) -> Any:
     provider = str(cfg.get("provider", "")).strip()
     if provider == MODELS_CORPS_PROVIDER:
+        verify = cfg.get("verify_ssl")
+        if verify is None and cfg.get("ca_bundle"):
+            verify = cfg.get("ca_bundle")
         adapter = ModelsCorpsAdapter(
             model=str(cfg.get("model") or "claude-sonnet-4-20250514"),
             api_key=str(cfg.get("api_key") or ""),
             base_url=str(cfg.get("base_url") or ""),
+            verify=coerce_tls_verify(verify),
         )
         per_minute = int(cfg.get("rate_limit_per_minute", MODELS_CORPS_DEFAULT_RATE_LIMIT))
         limiter = MinuteRateLimiter(per_minute)
