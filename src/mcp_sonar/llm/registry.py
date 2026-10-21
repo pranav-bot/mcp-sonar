@@ -38,6 +38,20 @@ def get_default_llm_name() -> str | None:
     return get_default_config_name(load_llm_file())
 
 
+def _resolve_maas_verify(cfg: dict[str, Any]) -> bool | str:
+    verify = cfg.get("verify_ssl")
+    if verify is not None:
+        return coerce_tls_verify(verify)
+    ca_bundle = cfg.get("ca_bundle")
+    if ca_bundle:
+        return coerce_tls_verify(ca_bundle)
+    for env_name in ("MAAS_VERIFY_SSL", "MODELS_CORPS_VERIFY_SSL"):
+        raw = os.environ.get(env_name, "").strip()
+        if raw:
+            return coerce_tls_verify(raw)
+    return True
+
+
 def _maas_credentials(cfg: dict[str, Any]) -> tuple[str, str]:
     api_key = str(cfg.get("api_key") or os.environ.get("MAAS_API_KEY") or "")
     base_url = str(cfg.get("base_url") or os.environ.get("MAAS_BASE_URL") or "")
@@ -50,22 +64,22 @@ def _maas_credentials(cfg: dict[str, Any]) -> tuple[str, str]:
 
 def build_maas_adapter(cfg: dict[str, Any]) -> MaasAdapter:
     api_key, base_url = _maas_credentials(cfg)
-    verify = cfg.get("verify_ssl")
-    if verify is None and cfg.get("ca_bundle"):
-        verify = cfg.get("ca_bundle")
     adapter = MaasAdapter(
         model=str(cfg.get("model") or "Qwen3-14B"),
         api_key=api_key,
         base_url=base_url,
-        verify=coerce_tls_verify(verify),
+        verify=_resolve_maas_verify(cfg),
     )
     per_minute = int(cfg.get("rate_limit_per_minute", MAAS_DEFAULT_RATE_LIMIT))
     limiter = MinuteRateLimiter(per_minute)
     return RateLimitedAdapter(adapter, limiter)  # type: ignore[return-value]
 
 
-def get_adapter_for_config(config_name: str) -> Any:
-    data = load_llm_file()
+def get_adapter_for_config(config_name: str, llm_path: Any = None) -> Any:
+    from pathlib import Path
+
+    explicit = Path(llm_path) if llm_path is not None else None
+    data = load_llm_file(explicit)
     configs = data.get("configs") if data else None
     if not configs or config_name not in configs:
         known = ", ".join(sorted(configs or []))

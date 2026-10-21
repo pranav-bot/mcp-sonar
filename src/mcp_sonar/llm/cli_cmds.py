@@ -7,11 +7,15 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+import httpx
+
+from mcp_sonar.local_bootstrap import load_local_dotenv
 from mcp_sonar.llm.config import load_llm_file, resolve_llm_config_path, summarize_configs
 from mcp_sonar.llm.registry import get_adapter_for_config
 
 
 def run_llm_list(config_path: Path | None, fmt: str) -> None:
+    load_local_dotenv()
     data = load_llm_file(config_path)
     path = config_path or resolve_llm_config_path()
     if data is None:
@@ -52,9 +56,17 @@ def run_llm_list(config_path: Path | None, fmt: str) -> None:
     console.print(table)
 
 
+def _ssl_connect_hint() -> str:
+    return (
+        "TLS verify failed (common on corporate gateways). Set MAAS_VERIFY_SSL=false or "
+        "MODELS_CORPS_VERIFY_SSL=false in local/.env, or point verify_ssl_env at your CA bundle."
+    )
+
+
 def run_llm_models(config_path: Path | None, config_name: str | None) -> None:
     """Call MaaS GET /models for a named llm.json entry (maas or models-corps)."""
 
+    load_local_dotenv()
     data = load_llm_file(config_path)
     if data is None:
         raise click.ClickException(
@@ -65,7 +77,7 @@ def run_llm_models(config_path: Path | None, config_name: str | None) -> None:
     if not name:
         raise click.ClickException("No config name: pass --name or set default in llm.json")
     try:
-        adapter = get_adapter_for_config(str(name))
+        adapter = get_adapter_for_config(str(name), llm_path=config_path)
     except ValueError as err:
         raise click.ClickException(str(err)) from err
     list_fn = getattr(adapter, "list_model_ids", None)
@@ -78,6 +90,11 @@ def run_llm_models(config_path: Path | None, config_name: str | None) -> None:
 
     try:
         ids = asyncio.run(list_fn())
+    except httpx.ConnectError as err:
+        msg = str(err)
+        if "CERTIFICATE_VERIFY_FAILED" in msg or "certificate verify" in msg.lower():
+            raise click.ClickException(f"{msg}\n\n{_ssl_connect_hint()}") from err
+        raise click.ClickException(msg) from err
     except RuntimeError as err:
         raise click.ClickException(str(err)) from err
     click.echo(json.dumps({"config": name, "models": ids}, indent=2))

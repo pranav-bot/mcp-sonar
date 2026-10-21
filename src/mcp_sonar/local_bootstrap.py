@@ -25,10 +25,15 @@ def _load_dotenv_file(path: Path, *, override: bool = False) -> None:
         os.environ[key] = value
 
 
+def load_local_dotenv() -> None:
+    """Load gitignored ``local/.env`` into the process environment (no override)."""
+    _load_dotenv_file(Path.cwd() / "local" / ".env")
+
+
 def bootstrap_local_workspace(targets_config: Path | None = None) -> None:
     """Load gitignored ``local/.env`` and default LLM config for ``local/targets.yaml``."""
+    load_local_dotenv()
     root = Path.cwd()
-    _load_dotenv_file(root / "local" / ".env")
 
     if targets_config is not None:
         try:
