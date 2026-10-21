@@ -26,7 +26,8 @@ def _resolve_config_values(cfg: dict[str, Any]) -> dict[str, Any]:
     for key, value in cfg.items():
         if key.endswith(_ENV_SUFFIX) and isinstance(value, str):
             base_key = key[: -len(_ENV_SUFFIX)]
-            resolved[base_key] = os.environ.get(value, "").strip() or None
+            env_val = os.environ.get(value, "").strip()
+            resolved[base_key] = env_val or None
         else:
             resolved[key] = value
     return resolved

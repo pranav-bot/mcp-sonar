@@ -7,6 +7,10 @@ from pathlib import Path
 import click
 
 from mcp_sonar.cli_help import (
+    AGENT_GROUP_HELP,
+    AGENT_LLM_CONFIG_HELP,
+    AGENT_MAX_STEPS_HELP,
+    AGENT_PROMPT_FILE_HELP,
     ARGS_FILE_HELP,
     ARGS_JSON_HELP,
     BATCH_FILE_HELP,
@@ -506,6 +510,63 @@ def tools_prompts_list_cmd(target: str, config_path: Path | None, fmt: str) -> N
 
     async def _run() -> None:
         await run_prompts_list(target, config_path, fmt)  # type: ignore[arg-type]
+
+    asyncio.run(_run())
+
+
+@main.group("agent", help=AGENT_GROUP_HELP)
+def agent_group() -> None:
+    """LLM + MCP tool loop with a visible step trace."""
+
+
+@agent_group.command("run")
+@with_target_option()
+@with_config_option()
+@click.option("--prompt", default=None, help="User task for the LLM (required unless --prompt-file).")
+@click.option("--prompt-file", type=click.Path(path_type=Path, exists=True), default=None, help=AGENT_PROMPT_FILE_HELP)
+@click.option("--llm-config", default=None, help=AGENT_LLM_CONFIG_HELP)
+@click.option("--max-steps", default=8, show_default=True, help=AGENT_MAX_STEPS_HELP)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "json"]),
+    default="rich",
+    show_default=True,
+    help="rich: step table + final panel; json: full trace for scripts.",
+)
+def agent_run_cmd(
+    target: str,
+    config_path: Path | None,
+    prompt: str | None,
+    prompt_file: Path | None,
+    llm_config: str | None,
+    max_steps: int,
+    fmt: str,
+) -> None:
+    """Connect to an MCP target, run an LLM agent loop, print tool calls and final answer."""
+
+    from mcp_sonar.interactor.agent_cmds import run_agent_cmd  # noqa: PLC0415
+
+    if prompt_file is not None:
+        text = prompt_file.read_text(encoding="utf-8").strip()
+        if not text:
+            raise click.ClickException(f"Prompt file is empty: {prompt_file}")
+        prompt = text
+    if not prompt:
+        raise click.ClickException("Provide --prompt or --prompt-file.")
+
+    async def _run() -> None:
+        try:
+            await run_agent_cmd(
+                target,
+                config_path,
+                prompt,
+                llm_config=llm_config,
+                max_steps=max_steps,
+                fmt=fmt,  # type: ignore[arg-type]
+            )
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
 
     asyncio.run(_run())
 

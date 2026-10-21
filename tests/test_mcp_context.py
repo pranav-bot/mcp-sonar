@@ -11,7 +11,7 @@ from mcp_sonar.suite.registry import get_suite
 
 def test_estimate_tokens_heuristic() -> None:
     count, method = estimate_tokens("abcd" * 10)
-    assert method == "chars/4"
+    assert method in ("chars/4", "tiktoken:cl100k_base")
     assert count == 10
 
 

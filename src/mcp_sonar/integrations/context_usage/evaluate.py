@@ -46,7 +46,7 @@ async def _run_llm(catalog: CatalogSnapshot, min_llm_score: float, token_budget:
     return metrics.gate_passed, metrics.context_score, metrics.summary, report, meta
 
 
-def evaluate_context(
+async def evaluate_context_async(
     catalog: CatalogSnapshot,
     *,
     mode: ContextMode,
@@ -76,8 +76,8 @@ def evaluate_context(
 
     if mode in ("llm", "both"):
         try:
-            passed, score, summary, llm_text, llm_meta = asyncio.run(
-                _run_llm(catalog, min_llm_score, token_budget)
+            passed, score, summary, llm_text, llm_meta = await _run_llm(
+                catalog, min_llm_score, token_budget
             )
             sections.append(llm_text)
             gates.append(passed)
@@ -116,6 +116,24 @@ def evaluate_context(
     )
 
 
+def evaluate_context(
+    catalog: CatalogSnapshot,
+    *,
+    mode: ContextMode,
+    token_budget: int,
+    min_llm_score: float,
+) -> ContextEvalResult:
+    """Sync entry point (not from an active asyncio loop)."""
+    return asyncio.run(
+        evaluate_context_async(
+            catalog,
+            mode=mode,
+            token_budget=token_budget,
+            min_llm_score=min_llm_score,
+        )
+    )
+
+
 async def evaluate_target_context(
     target: ConnectedTarget,
     *,
@@ -124,7 +142,7 @@ async def evaluate_target_context(
     min_llm_score: float,
 ) -> ContextEvalResult:
     catalog = await fetch_catalog(target)
-    return evaluate_context(
+    return await evaluate_context_async(
         catalog,
         mode=mode,
         token_budget=token_budget,

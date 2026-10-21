@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -53,6 +54,23 @@ def _parse_tool_use(payload: dict[str, Any]) -> dict[str, Any]:
     return {"tool_name": "", "arguments": {}}
 
 
+def coerce_tls_verify(value: Any) -> bool | str:
+    """httpx ``verify``: False, True, or path to a CA bundle."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return True
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("", "true", "1", "yes"):
+            return True
+        if lowered in ("false", "0", "no"):
+            return False
+        if Path(value).expanduser().is_file():
+            return str(Path(value).expanduser())
+    return True
+
+
 def _parse_text(payload: dict[str, Any]) -> str:
     parts: list[str] = []
     for block in payload.get("content", []):
@@ -75,6 +93,7 @@ class ModelsCorpsAdapter:
         api_key: str,
         base_url: str,
         timeout: float = 120.0,
+        verify: bool | str = True,
     ) -> None:
         if not api_key:
             raise ValueError("models-corps provider requires api_key (use api_key_env in llm.json)")
@@ -84,6 +103,7 @@ class ModelsCorpsAdapter:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self._verify = coerce_tls_verify(verify)
         logger.debug("ModelsCorpsAdapter model=%s base_url=%s", model, self.base_url)
 
     async def _post(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -97,7 +117,7 @@ class ModelsCorpsAdapter:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        async with httpx.AsyncClient(timeout=self._timeout, verify=self._verify) as client:
             response = await client.post(url, headers=headers, json=request_body)
         if response.status_code == 429:
             raise RuntimeError(

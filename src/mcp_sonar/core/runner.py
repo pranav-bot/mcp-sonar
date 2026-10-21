@@ -102,11 +102,11 @@ async def _invoke_agentic_eval(target: ConnectedTarget) -> Any:
 
 async def _invoke_mcp_lens(target: ConnectedTarget, mode: str) -> Any:
     from mcp_sonar.core.types import ToolOutcome  # noqa: PLC0415
-    from mcp_sonar.integrations.mcp_lens.evaluate import LensNotInstalledError, evaluate_tools  # noqa: PLC0415
+    from mcp_sonar.integrations.mcp_lens.evaluate import LensNotInstalledError, evaluate_tools_async  # noqa: PLC0415
 
     try:
         tools = await _lens_tools_for_target(target)
-        result = evaluate_tools(tools, server_name=target.name, mode=mode)  # type: ignore[arg-type]
+        result = await evaluate_tools_async(tools, server_name=target.name, mode=mode)  # type: ignore[arg-type]
     except (LensNotInstalledError, RuntimeError) as exc:
         message = str(exc)
         return ToolOutcome(

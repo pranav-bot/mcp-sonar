@@ -5,6 +5,7 @@ Open-source toolkit to **benchmark**, **compare**, and **interact** with [Model 
 - **One server:** run a suite and collect latency + payload stats  
 - **Two servers:** same suite, side-by-side comparison  
 - **Ad hoc:** list/describe/call tools, inspect server info, list resources/prompts (CLI, no LLM)  
+- **Agent:** send a prompt to an LLM wired to an MCP server; see each tool call and the final answer (`sonar agent run`)  
 - **Extensible:** drop YAML suites under `config/suites/`, or add Python suites in `src/mcp_sonar/suite/`
 
 Transports: **stdio** (subprocess) and **streamable HTTP** (with optional bearer token). Every CLI command and benchmark report shows which transport and endpoint you are using (stdio vs streamable HTTP are always labeled explicitly).
@@ -124,6 +125,10 @@ Checks: `not_error`, `expect_error`, `list_tools_nonempty`, `contains_text`, `js
 # Discover
 sonar list-targets --config config/targets.yaml
 sonar list-suites --config config/targets.yaml
+
+# LLM agent (tool loop + step trace; requires llm.json)
+sonar agent run --config config/targets.yaml --target everything-stdio \
+  --prompt "Call echo with message hello and tell me what came back" --format json
 
 # Interact (no LLM — direct MCP tool calls)
 sonar tools list --config config/targets.yaml --target everything-stdio

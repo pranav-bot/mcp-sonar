@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Literal
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+from mcp_sonar.display import print_connected_target
+from mcp_sonar.interactor.agent import AgentRunResult, run_agent
+from mcp_sonar.interactor.session import open_target
+from mcp_sonar.llm.registry import get_adapter_for_config, get_default_llm_name
+
+console = Console()
+
+AgentFormat = Literal["rich", "json"]
+
+
+def _resolve_llm_config_name(explicit: str | None) -> str:
+    name = explicit or get_default_llm_name()
+    if not name:
+        raise RuntimeError(
+            "No LLM configured. Set MCP_SONAR_LLM_CONFIG, add config/llm.json, "
+            "or pass --llm-config."
+        )
+    return name
+
+
+def print_agent_report(result: AgentRunResult, *, fmt: AgentFormat) -> None:
+    if fmt == "json":
+        console.print_json(json.dumps(result.to_dict(), indent=2))
+        return
+
+    table = Table(title="Agent steps")
+    table.add_column("#", style="dim")
+    table.add_column("Kind")
+    table.add_column("Tool")
+    table.add_column("Detail")
+    for step in result.steps:
+        detail = step.note or step.llm_text or ""
+        if step.kind == "tool_call":
+            detail = (step.tool_result_text or "")[:200]
+            if step.tool_is_error:
+                detail = f"[error] {detail}"
+        table.add_row(
+            str(step.index),
+            step.kind,
+            step.tool_name or "—",
+            detail.replace("\n", " ")[:120],
+        )
+    console.print(table)
+    console.print(
+        Panel(
+            result.final_answer or "(empty)",
+            title=f"Final answer ({result.stopped_reason})",
+            border_style="green",
+        )
+    )
+
+
+async def run_agent_cmd(
+    target: str,
+    config_path: Path | None,
+    prompt: str,
+    *,
+    llm_config: str | None,
+    max_steps: int,
+    fmt: AgentFormat,
+) -> AgentRunResult:
+    config_name = _resolve_llm_config_name(llm_config)
+    adapter = get_adapter_for_config(config_name)
+
+    async with open_target(target, config_path) as (_name, connected):
+        print_connected_target(connected)
+        result = await run_agent(
+            connected,
+            adapter,
+            prompt,
+            llm_config_name=config_name,
+            max_steps=max_steps,
+        )
+    print_agent_report(result, fmt=fmt)
+    return result

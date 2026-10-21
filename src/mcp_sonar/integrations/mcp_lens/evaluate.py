@@ -85,7 +85,7 @@ async def _build_llm_layer(tools: list[dict]) -> tuple[object | None, dict[str, 
     return llm_layer, meta
 
 
-def evaluate_tools(
+async def evaluate_tools_async(
     tools: list[dict],
     *,
     server_name: str,
@@ -105,7 +105,7 @@ def evaluate_tools(
 
     if mode in ("llm", "both"):
         try:
-            llm_layer, llm_meta = asyncio.run(_build_llm_layer(tools))
+            llm_layer, llm_meta = await _build_llm_layer(tools)
             if llm_layer is not None:
                 layers["llm"] = llm_layer
             metadata.update(llm_meta)
@@ -137,3 +137,13 @@ def evaluate_tools(
         report_text=text,
         metadata=metadata,
     )
+
+
+def evaluate_tools(
+    tools: list[dict],
+    *,
+    server_name: str,
+    mode: LensMode,
+) -> LensEvalResult:
+    """Sync entry point (CLI/tests only — not from an active asyncio loop)."""
+    return asyncio.run(evaluate_tools_async(tools, server_name=server_name, mode=mode))

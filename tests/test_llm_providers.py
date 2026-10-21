@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from mcp_sonar.llm.adapters.models_corps import models_corps_family_path, models_corps_predict_url
+from mcp_sonar.llm.adapters.models_corps import (
+    coerce_tls_verify,
+    models_corps_family_path,
+    models_corps_predict_url,
+)
 from mcp_sonar.llm.config import load_llm_file
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
 from mcp_sonar.llm.registry import MODELS_CORPS_DEFAULT_RATE_LIMIT, build_adapter
@@ -15,6 +19,13 @@ def test_models_corps_family_path() -> None:
     assert models_corps_family_path("claude-3-5-haiku-20241022") == "haiku"
     assert models_corps_family_path("claude-opus-4-20250514") == "opus"
     assert models_corps_family_path("claude-sonnet-4-20250514") == "sonnet"
+
+
+def test_coerce_tls_verify() -> None:
+    assert coerce_tls_verify(False) is False
+    assert coerce_tls_verify("false") is False
+    assert coerce_tls_verify("true") is True
+    assert coerce_tls_verify(None) is True
 
 
 def test_models_corps_predict_url() -> None:
