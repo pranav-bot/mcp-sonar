@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from mcp_sonar.llm.adapters.maas import (
+    MAAS_SANDBOX_RATE_LIMIT,
     coerce_tls_verify,
     maas_chat_completions_url,
     maas_models_url,
@@ -14,8 +15,7 @@ from mcp_sonar.llm.adapters.maas import (
 from mcp_sonar.llm.config import load_llm_file
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
 from mcp_sonar.llm.registry import (
-    MAAS_DEFAULT_RATE_LIMIT,
-    MODELS_CORPS_DEFAULT_RATE_LIMIT,
+    MODELS_CORPS_SANDBOX_RATE_LIMIT,
     _resolve_maas_verify,
     build_adapter,
 )
@@ -90,7 +90,23 @@ def test_load_llm_file_resolves_env(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert cfg["rate_limit_per_minute"] == 10
 
 
-def test_build_adapter_maas_wraps_rate_limit() -> None:
+def test_build_adapter_maas_wraps_rate_limit_when_configured() -> None:
+    adapter = build_adapter(
+        {
+            "provider": "maas",
+            "model": "Qwen3-14B",
+            "api_key": "k",
+            "base_url": "https://models.corp.redhat.com/oai/v1",
+            "rate_limit_per_minute": 10,
+        }
+    )
+    from mcp_sonar.llm.adapters.maas import MaasAdapter
+    from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
+
+    assert isinstance(adapter, RateLimitedAdapter)
+
+
+def test_build_adapter_maas_skips_rate_limit_when_omitted() -> None:
     adapter = build_adapter(
         {
             "provider": "maas",
@@ -99,28 +115,16 @@ def test_build_adapter_maas_wraps_rate_limit() -> None:
             "base_url": "https://models.corp.redhat.com/oai/v1",
         }
     )
+    from mcp_sonar.llm.adapters.maas import MaasAdapter
     from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
 
-    assert isinstance(adapter, RateLimitedAdapter)
+    assert isinstance(adapter, MaasAdapter)
+    assert not isinstance(adapter, RateLimitedAdapter)
 
 
-def test_build_adapter_models_corps_alias() -> None:
-    adapter = build_adapter(
-        {
-            "provider": "models-corps",
-            "model": "Qwen3-14B",
-            "api_key": "k",
-            "base_url": "https://models.corp.redhat.com/oai/v1",
-        }
-    )
-    from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
-
-    assert isinstance(adapter, RateLimitedAdapter)
-
-
-def test_maas_default_rate_limit_sandbox() -> None:
-    assert MAAS_DEFAULT_RATE_LIMIT == 10
-    assert MODELS_CORPS_DEFAULT_RATE_LIMIT == 10
+def test_maas_sandbox_rate_limit_constants() -> None:
+    assert MAAS_SANDBOX_RATE_LIMIT == 10
+    assert MODELS_CORPS_SANDBOX_RATE_LIMIT == 10
 
 
 def test_build_adapter_requires_base_url(monkeypatch: pytest.MonkeyPatch) -> None:

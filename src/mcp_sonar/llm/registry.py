@@ -3,14 +3,14 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from mcp_sonar.llm.adapters.maas import MAAS_DEFAULT_RATE_LIMIT, MAAS_PROVIDER, MaasAdapter, coerce_tls_verify
+from mcp_sonar.llm.adapters.maas import MAAS_PROVIDER, MAAS_SANDBOX_RATE_LIMIT, MaasAdapter, coerce_tls_verify
 from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
 from mcp_sonar.llm.config import get_default_config_name, load_llm_file, resolve_llm_config_path
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
 
 MODELS_CORPS_PROVIDER = "models-corps"
-# Alias: same adapter as ``maas``; default rate limit matches MaaS sandbox (10 req/min).
-MODELS_CORPS_DEFAULT_RATE_LIMIT = MAAS_DEFAULT_RATE_LIMIT
+# Alias for ``maas``. Sandbox reference limit (10 req/min) — set rate_limit_per_minute per account tier.
+MODELS_CORPS_SANDBOX_RATE_LIMIT = MAAS_SANDBOX_RATE_LIMIT
 
 _LENS_PROVIDERS = frozenset({"mock", "anthropic", "openai", "vertexai", "anthropic-vertex"})
 
@@ -70,7 +70,12 @@ def build_maas_adapter(cfg: dict[str, Any]) -> MaasAdapter:
         base_url=base_url,
         verify=_resolve_maas_verify(cfg),
     )
-    per_minute = int(cfg.get("rate_limit_per_minute", MAAS_DEFAULT_RATE_LIMIT))
+    raw_limit = cfg.get("rate_limit_per_minute")
+    if raw_limit is None:
+        return adapter
+    per_minute = int(raw_limit)
+    if per_minute <= 0:
+        return adapter
     limiter = MinuteRateLimiter(per_minute)
     return RateLimitedAdapter(adapter, limiter)  # type: ignore[return-value]
 

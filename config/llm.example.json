@@ -31,6 +31,14 @@
       "verify_ssl_env": "MAAS_VERIFY_SSL",
       "rate_limit_per_minute": 10
     },
+    "maas-personal": {
+      "provider": "maas",
+      "model": "Qwen3-14B",
+      "base_url_env": "MAAS_BASE_URL",
+      "api_key_env": "MAAS_API_KEY",
+      "verify_ssl_env": "MAAS_VERIFY_SSL",
+      "rate_limit_per_minute": 20
+    },
     "models-corps-sandbox": {
       "provider": "models-corps",
       "model": "Qwen3-14B",
