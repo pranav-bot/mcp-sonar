@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from mcp_sonar.config import UnknownTargetError, load_targets, require_targets_path, resolve_target
+from mcp_sonar.local_bootstrap import bootstrap_local_workspace
 from mcp_sonar.target import ConnectedTarget, connect_target
 
 
@@ -16,6 +17,7 @@ async def open_target(
     target: str,
     config_path: Path | None,
 ) -> AsyncIterator[tuple[str, ConnectedTarget]]:
+    bootstrap_local_workspace(config_path)
     config_file = require_targets_path(config_path)
     targets = load_targets(config_file)
     try:

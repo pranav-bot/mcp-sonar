@@ -10,8 +10,9 @@ import httpx
 logger = logging.getLogger(__name__)
 
 MAAS_PROVIDER = "maas"
-# Sandbox tier default (per model, per minute). Override in llm.json.
-MAAS_DEFAULT_RATE_LIMIT = 10
+# MaaS sandbox tier: 10 requests/minute per model (set rate_limit_per_minute in llm.json).
+# Personal tier is 20 req/min; enterprise varies — always match your portal Settings.
+MAAS_SANDBOX_RATE_LIMIT = 10
 
 
 def coerce_tls_verify(value: Any) -> bool | str:
@@ -141,8 +142,8 @@ class MaasAdapter:
             raise
         if response.status_code == 429:
             raise RuntimeError(
-                "MaaS rate limit exceeded (HTTP 429). Sandbox tier is typically 10 requests/minute "
-                "per model — back off and retry."
+                "MaaS rate limit exceeded (HTTP 429). Match rate_limit_per_minute in llm.json to your "
+                "portal tier (sandbox: 10 req/min per model, personal: 20) and retry with backoff."
             )
         if response.status_code >= 400:
             raise RuntimeError(f"MaaS HTTP {response.status_code}: {response.text[:500]}")

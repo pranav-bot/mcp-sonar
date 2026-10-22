@@ -86,8 +86,8 @@ Copy `config/llm.example.json` to `config/llm.json` (or `llm.json` in the projec
 | `openai` | `uv sync --extra llm-openai` |
 | `vertexai` (Gemini) | `uv sync --extra llm-vertex` |
 | `anthropic-vertex` | `uv sync --extra llm-anthropic-vertex` |
-| `maas` | httpx only; OpenAI-compatible MaaS (`MAAS_BASE_URL`, `MAAS_API_KEY`, typically `https://…/oai/v1`). **Sandbox: 10 requests/minute per model** (client-side default `rate_limit_per_minute`). |
-| `models-corps` | Alias for `maas` (same adapter; legacy config name). |
+| `maas` | httpx only; OpenAI-compatible MaaS (`MAAS_BASE_URL`, `MAAS_API_KEY`). Set **`rate_limit_per_minute`** to match your portal tier (client-side throttle): sandbox **10** req/min per model, personal **20**, enterprise per assigned tier. Omit to skip client-side throttling. |
+| `models-corps` | Alias for `maas` (legacy config name). |
 
 ```bash
 sonar llm list --config config/llm.json
