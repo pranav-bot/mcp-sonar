@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from mcp_sonar.interactor.args_file import load_batch_file, load_invoke_file, resolve_invoke
+from mcp_sonar.interactor.args_file import (
+    load_batch_file,
+    load_invoke_file,
+    load_prompt_batch,
+    resolve_invoke,
+)
 from mcp_sonar.interactor.tool_template import defaults_from_input_schema, render_invoke_template
 import mcp_types as types
 
@@ -56,6 +61,54 @@ def test_load_batch_file(tmp_path: Path) -> None:
     assert len(batch.calls) == 2
     assert batch.calls[1].target == "other"
     assert batch.calls[1].arguments == {"x": 1}
+
+
+def test_load_prompt_batch(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.yaml"
+    path.write_text(
+        "target: everything-stdio\n"
+        "prompts:\n"
+        "  - Say hello\n"
+        "  - Say goodbye\n",
+        encoding="utf-8",
+    )
+    batch = load_prompt_batch(path)
+    assert batch.target == "everything-stdio"
+    assert batch.prompts == ["Say hello", "Say goodbye"]
+
+
+def test_load_prompt_batch_rejects_empty_list(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.yaml"
+    path.write_text("prompts: []\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="non-empty list"):
+        load_prompt_batch(path)
+
+
+def test_load_prompt_batch_rejects_non_string(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.yaml"
+    path.write_text(
+        "prompts:\n  - Which open incidents mention the payments API: this week?\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="quoted string"):
+        load_prompt_batch(path)
+
+
+def test_load_prompt_batch_keeps_quoted_sentence(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.yaml"
+    path.write_text(
+        'prompts:\n  - "Which open incidents mention the payments API: this week?"\n',
+        encoding="utf-8",
+    )
+    batch = load_prompt_batch(path)
+    assert batch.prompts == ["Which open incidents mention the payments API: this week?"]
+
+
+def test_load_prompt_batch_rejects_blank_string(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.yaml"
+    path.write_text('prompts:\n  - ""\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="non-empty string"):
+        load_prompt_batch(path)
 
 
 def test_render_invoke_template_includes_arguments() -> None:

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import dataclass
 from typing import Any
+
+from mcp_sonar.json_text import last_json_object
 
 from mcp_sonar.integrations.context_usage.catalog import CatalogSnapshot
 from mcp_sonar.integrations.context_usage.static_eval import analyze_static_context, render_static_report
@@ -20,10 +20,10 @@ class LlmContextMetrics:
 
 
 def _parse_llm_json(text: str) -> dict[str, Any]:
-    match = re.search(r"\{[\s\S]*\}", text)
-    if not match:
-        raise ValueError("LLM response did not contain JSON object")
-    return json.loads(match.group(0))
+    try:
+        return last_json_object(text)
+    except ValueError as exc:
+        raise ValueError("LLM response did not contain JSON object") from exc
 
 
 async def analyze_llm_context(

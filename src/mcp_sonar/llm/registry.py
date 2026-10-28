@@ -3,14 +3,10 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from mcp_sonar.llm.adapters.maas import MAAS_PROVIDER, MAAS_SANDBOX_RATE_LIMIT, MaasAdapter, coerce_tls_verify
+from mcp_sonar.llm.adapters.maas import MAAS_PROVIDER, MaasAdapter, coerce_tls_verify
 from mcp_sonar.llm.adapters.rate_limited import RateLimitedAdapter
 from mcp_sonar.llm.config import get_default_config_name, load_llm_file, resolve_llm_config_path
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
-
-MODELS_CORPS_PROVIDER = "models-corps"
-# Alias for ``maas``. Sandbox reference limit (10 req/min) — set rate_limit_per_minute per account tier.
-MODELS_CORPS_SANDBOX_RATE_LIMIT = MAAS_SANDBOX_RATE_LIMIT
 
 _LENS_PROVIDERS = frozenset({"mock", "anthropic", "openai", "vertexai", "anthropic-vertex"})
 
@@ -20,7 +16,6 @@ _INSTALL_HINTS = {
     "vertexai": "uv sync --extra llm-vertex",
     "anthropic-vertex": "uv sync --extra llm-anthropic-vertex",
     MAAS_PROVIDER: "uses httpx; set MAAS_BASE_URL and MAAS_API_KEY (see config/llm.example.json)",
-    MODELS_CORPS_PROVIDER: "alias for maas — prefer provider maas and MAAS_* env vars",
 }
 
 
@@ -45,27 +40,25 @@ def _resolve_maas_verify(cfg: dict[str, Any]) -> bool | str:
     ca_bundle = cfg.get("ca_bundle")
     if ca_bundle:
         return coerce_tls_verify(ca_bundle)
-    for env_name in ("MAAS_VERIFY_SSL", "MODELS_CORPS_VERIFY_SSL"):
-        raw = os.environ.get(env_name, "").strip()
-        if raw:
-            return coerce_tls_verify(raw)
+    raw = os.environ.get("MAAS_VERIFY_SSL", "").strip()
+    if raw:
+        return coerce_tls_verify(raw)
     return True
 
 
 def _maas_credentials(cfg: dict[str, Any]) -> tuple[str, str]:
     api_key = str(cfg.get("api_key") or os.environ.get("MAAS_API_KEY") or "")
     base_url = str(cfg.get("base_url") or os.environ.get("MAAS_BASE_URL") or "")
-    if not api_key:
-        api_key = str(os.environ.get("MODELS_CORPS_API_KEY") or "")
-    if not base_url:
-        base_url = str(os.environ.get("MODELS_CORPS_BASE_URL") or "")
     return api_key, base_url
 
 
 def build_maas_adapter(cfg: dict[str, Any]) -> MaasAdapter:
     api_key, base_url = _maas_credentials(cfg)
+    model = str(cfg.get("model") or "").strip()
+    if not model:
+        raise ValueError("maas provider requires model")
     adapter = MaasAdapter(
-        model=str(cfg.get("model") or "Qwen3-14B"),
+        model=model,
         api_key=api_key,
         base_url=base_url,
         verify=_resolve_maas_verify(cfg),
@@ -97,7 +90,7 @@ def get_adapter_for_config(config_name: str, llm_path: Any = None) -> Any:
 
 def build_adapter(cfg: dict[str, Any]) -> Any:
     provider = str(cfg.get("provider", "")).strip()
-    if provider in (MAAS_PROVIDER, MODELS_CORPS_PROVIDER):
+    if provider == MAAS_PROVIDER:
         return build_maas_adapter(cfg)
 
     if provider in _LENS_PROVIDERS:
@@ -123,5 +116,5 @@ def build_adapter(cfg: dict[str, Any]) -> Any:
 
     raise ValueError(
         f"Unknown LLM provider '{provider}'. "
-        f"Supported: {', '.join(sorted(_LENS_PROVIDERS | {MAAS_PROVIDER, MODELS_CORPS_PROVIDER}))}"
+        f"Supported: {', '.join(sorted(_LENS_PROVIDERS | {MAAS_PROVIDER}))}"
     )

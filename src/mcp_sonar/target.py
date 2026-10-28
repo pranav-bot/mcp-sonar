@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
+import click
 import httpx
 import mcp_types as types
 from mcp import ClientSession
@@ -20,6 +21,17 @@ from mcp_sonar.config import (
 from mcp_sonar.core.types import ToolOutcome
 from mcp_sonar.tool_result import outcome_from_call, outcome_from_exception
 from mcp_sonar.transport import TransportInfo, transport_info
+
+# Connect stays short. Read stays open long enough for a slow tool or a model
+# pause between tool calls on the same session.
+_HTTP_TIMEOUT = httpx.Timeout(30.0, read=600.0)
+
+
+def _short_error(exc: BaseException) -> str:
+    if isinstance(exc, BaseExceptionGroup):
+        parts = [_short_error(item) for item in exc.exceptions]
+        return "; ".join(part for part in parts if part)
+    return str(exc)
 
 
 @dataclass(frozen=True)
@@ -111,16 +123,26 @@ async def connect_target(name: str, config: TargetConfig) -> AsyncIterator[Conne
     if isinstance(transport, StreamableHttpTransportConfig):
         headers: dict[str, str] = {}
         if config.auth and config.auth.bearer_env:
-            token = os.environ.get(config.auth.bearer_env, "")
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
-        async with httpx.AsyncClient(headers=headers, timeout=120.0) as http_client:
-            async with streamable_http_client(transport.url, http_client=http_client) as (
-                read_stream,
-                write_stream,
-            ):
-                async with _connected_session(name, config, read_stream, write_stream) as connected:
-                    yield connected
+            token = os.environ.get(config.auth.bearer_env, "").strip()
+            if not token:
+                raise click.ClickException(
+                    f"Bearer token env var '{config.auth.bearer_env}' is not set."
+                )
+            headers["Authorization"] = f"Bearer {token}"
+        try:
+            async with httpx.AsyncClient(headers=headers, timeout=_HTTP_TIMEOUT) as http_client:
+                async with streamable_http_client(transport.url, http_client=http_client) as (
+                    read_stream,
+                    write_stream,
+                ):
+                    async with _connected_session(name, config, read_stream, write_stream) as connected:
+                        yield connected
+        except click.ClickException:
+            raise
+        except (httpx.HTTPError, BaseExceptionGroup) as exc:
+            raise click.ClickException(
+                f"Could not connect to {transport.url}: {_short_error(exc)}"
+            ) from exc
         return
 
     raise TypeError(f"Unsupported transport: {type(transport)!r}")

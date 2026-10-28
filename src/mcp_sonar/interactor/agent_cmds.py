@@ -10,6 +10,7 @@ from rich.table import Table
 
 from mcp_sonar.display import print_connected_target
 from mcp_sonar.interactor.agent import AgentRunResult, run_agent
+from mcp_sonar.interactor.args_file import load_prompt_batch
 from mcp_sonar.interactor.session import open_target
 from mcp_sonar.local_bootstrap import bootstrap_local_workspace
 from mcp_sonar.llm.config import resolve_llm_config_path
@@ -104,3 +105,54 @@ async def run_agent_cmd(
         )
     print_agent_report(result, fmt=fmt)
     return result
+
+
+async def run_agent_batch_cmd(
+    prompts_file: Path,
+    target: str | None,
+    config_path: Path | None,
+    *,
+    llm_config: str | None,
+    max_steps: int,
+    fmt: AgentFormat,
+) -> list[AgentRunResult]:
+    batch = load_prompt_batch(prompts_file)
+    resolved_target = target or batch.target
+    if not resolved_target:
+        raise RuntimeError("Set --target or a top-level 'target' in the prompts file.")
+
+    bootstrap_local_workspace(config_path)
+    llm_path = resolve_llm_config_path()
+    if llm_path is not None:
+        console.print(f"[dim]LLM config: {llm_path}[/dim]")
+    config_name = _resolve_llm_config_name(llm_config)
+    adapter = get_adapter_for_config(config_name)
+
+    results: list[AgentRunResult] = []
+    total = len(batch.prompts)
+    completed = False
+    try:
+        for index, prompt in enumerate(batch.prompts, start=1):
+            async with open_target(resolved_target, config_path) as (_name, connected):
+                print_connected_target(connected)
+                result = await run_agent(
+                    connected,
+                    adapter,
+                    prompt,
+                    llm_config_name=config_name,
+                    max_steps=max_steps,
+                )
+            results.append(result)
+            if fmt == "rich":
+                console.print(f"\n[bold]prompt {index}/{total}[/bold]")
+                print_agent_report(result, fmt="rich")
+        completed = True
+    finally:
+        if fmt == "json" and (results or completed):
+            console.print_json(
+                json.dumps({"results": [item.to_dict() for item in results]}, indent=2)
+            )
+
+    if any(result.stopped_reason == "llm_error" for result in results):
+        raise SystemExit(1)
+    return results

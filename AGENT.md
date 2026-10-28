@@ -92,7 +92,7 @@ Keep **CREDITS.md** updated when adding or changing integrations with external e
 ### LLM providers (`src/mcp_sonar/llm/`)
 
 - Config: `config/llm.example.json` → user’s gitignored `config/llm.json` or `MCP_SONAR_LLM_CONFIG`.
-- `registry.build_adapter()` delegates `anthropic`, `openai`, `vertexai`, `anthropic-vertex` to MCP Lens adapters; `maas` / `models-corps` use in-tree OpenAI-compatible MaaS (`/v1/chat/completions`, Bearer). Optional **client-side** `MinuteRateLimiter` when `rate_limit_per_minute` is set (examples: sandbox 10, personal 20 req/min per model — match the user’s portal tier).
+- `registry.build_adapter()` delegates `anthropic`, `openai`, `vertexai`, `anthropic-vertex` to MCP Lens adapters; `maas` is an in-tree OpenAI-compatible client (`/v1/chat/completions`, Bearer). Optional **client-side** `MinuteRateLimiter` when `rate_limit_per_minute` is set.
 - Do not commit real gateway hostnames or API keys; use `base_url_env` / `api_key_env` in examples only.
 
 ## Before you finish

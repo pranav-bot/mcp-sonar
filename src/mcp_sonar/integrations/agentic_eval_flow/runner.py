@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -12,6 +11,7 @@ from mcp_sonar.integrations.agentic_eval_flow.aggregate import (
     render_report_text,
 )
 from mcp_sonar.integrations.agentic_eval_flow.pack import materialize_eval_workspace, resolve_eval_pack
+from mcp_sonar.json_text import last_json_object
 from mcp_sonar.target import ConnectedTarget
 
 
@@ -31,10 +31,10 @@ def find_mcpchecker(binary: str | None = None) -> str:
 
 
 def _extract_json_blob(raw: str) -> dict:
-    match = re.search(r"\{[\s\S]*\}\s*$", raw)
-    if not match:
-        raise ValueError("mcpchecker output did not contain a JSON object")
-    return json.loads(match.group(0))
+    try:
+        return last_json_object(raw)
+    except ValueError as exc:
+        raise ValueError("mcpchecker output did not contain a JSON object") from exc
 
 
 def run_mcpchecker_cli(

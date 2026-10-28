@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from mcp_sonar.cli_help import (
+    AGENT_BATCH_FILE_HELP,
     AGENT_GROUP_HELP,
     AGENT_LLM_CONFIG_HELP,
     AGENT_MAX_STEPS_HELP,
@@ -227,7 +228,7 @@ def llm_list_cmd(config_path: Path | None, fmt: str) -> None:
     help="Named llm.json config (default: file's default entry).",
 )
 def llm_models_cmd(config_path: Path | None, config_name: str | None) -> None:
-    """List model IDs from Models.corp MaaS (GET /v1/models; requires VPN + API key)."""
+    """List model IDs from a maas endpoint (GET /models; requires API key)."""
 
     run_llm_models(config_path, config_name)
 
@@ -646,6 +647,57 @@ def agent_run_cmd(
     asyncio.run(_run())
 
 
+@agent_group.command("batch")
+@click.option(
+    "--file",
+    "prompts_file",
+    required=True,
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    help=AGENT_BATCH_FILE_HELP,
+)
+@with_target_option(required=False)
+@with_config_option()
+@click.option("--llm-config", default=None, help=AGENT_LLM_CONFIG_HELP)
+@click.option("--max-steps", default=8, show_default=True, help=AGENT_MAX_STEPS_HELP)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["rich", "json"]),
+    default="rich",
+    show_default=True,
+    help="rich: step table + final panel per prompt; json: {results: [...]} for scripts.",
+)
+def agent_batch_cmd(
+    prompts_file: Path,
+    target: str | None,
+    config_path: Path | None,
+    llm_config: str | None,
+    max_steps: int,
+    fmt: str,
+) -> None:
+    """Run one LLM agent loop per prompt in a YAML or JSON file."""
+
+    from mcp_sonar.interactor.agent_cmds import run_agent_batch_cmd  # noqa: PLC0415
+    from mcp_sonar.local_bootstrap import bootstrap_local_workspace  # noqa: PLC0415
+
+    bootstrap_local_workspace(config_path)
+
+    async def _run() -> None:
+        try:
+            await run_agent_batch_cmd(
+                prompts_file,
+                target,
+                config_path,
+                llm_config=llm_config,
+                max_steps=max_steps,
+                fmt=fmt,  # type: ignore[arg-type]
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    asyncio.run(_run())
+
+
 @main.command("run")
 @with_target_option()
 @click.option("--suite", "suite_id", required=True, help=SUITE_HELP)
@@ -720,6 +772,9 @@ def run_cmd(
     """
 
     async def _run() -> None:
+        from mcp_sonar.local_bootstrap import bootstrap_local_workspace  # noqa: PLC0415
+
+        bootstrap_local_workspace(config_path)
         config_file = _resolve_config(config_path)
         ensure_suites_loaded(_config_dir(config_file))
         targets = load_targets(config_file)
@@ -762,7 +817,10 @@ def run_cmd(
         if any(not s.functional_pass and not s.skipped for s in report.scenarios):
             raise SystemExit(1)
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @main.command("compare")
@@ -849,6 +907,9 @@ def compare_cmd(
     """
 
     async def _run() -> None:
+        from mcp_sonar.local_bootstrap import bootstrap_local_workspace  # noqa: PLC0415
+
+        bootstrap_local_workspace(config_path)
         config_file = _resolve_config(config_path)
         ensure_suites_loaded(_config_dir(config_file))
         targets = load_targets(config_file)
@@ -899,7 +960,10 @@ def compare_cmd(
         if failed:
             raise SystemExit(1)
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 from mcp_sonar.interactor_cli import register_flat_commands  # noqa: E402

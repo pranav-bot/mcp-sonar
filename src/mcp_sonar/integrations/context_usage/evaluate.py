@@ -84,7 +84,7 @@ async def evaluate_context_async(
             scores.append(score)
             metadata.update(llm_meta)
             metadata["llm_gate_passed"] = passed
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             if mode == "llm":
                 raise
             metadata["llm_error"] = str(exc)

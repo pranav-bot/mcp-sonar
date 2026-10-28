@@ -29,6 +29,12 @@ class BatchSpec:
     calls: list[BatchCall]
 
 
+@dataclass(frozen=True)
+class PromptBatch:
+    target: str | None
+    prompts: list[str]
+
+
 def _load_mapping(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() == ".json":
@@ -83,6 +89,27 @@ def load_batch_file(path: Path) -> BatchSpec:
             raise ValueError(f"{path}: calls[{index}].arguments must be a mapping")
         calls.append(BatchCall(tool=tool, target=row_target, arguments=arguments))
     return BatchSpec(target=default_target, calls=calls)
+
+
+def load_prompt_batch(path: Path) -> PromptBatch:
+    data = _load_mapping(path)
+    target = data.get("target")
+    if target is not None and not isinstance(target, str):
+        raise ValueError(f"{path}: 'target' must be a string")
+    raw_prompts = data.get("prompts")
+    if not isinstance(raw_prompts, list) or not raw_prompts:
+        raise ValueError(f"{path}: 'prompts' must be a non-empty list")
+    prompts: list[str] = []
+    for index, item in enumerate(raw_prompts):
+        if not isinstance(item, str):
+            raise ValueError(
+                f"{path}: prompts[{index}] must be a quoted string "
+                f"(YAML turned it into {type(item).__name__})"
+            )
+        if not item.strip():
+            raise ValueError(f"{path}: prompts[{index}] must be a non-empty string")
+        prompts.append(item)
+    return PromptBatch(target=target, prompts=prompts)
 
 
 def resolve_invoke(

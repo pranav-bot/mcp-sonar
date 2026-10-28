@@ -26,8 +26,31 @@ from mcp_sonar.suite.mcp_lens import LENS_LLM_TOOL, LENS_STATIC_TOOL
 from mcp_sonar.suite.agentic_eval_context import get_eval_pack, get_eval_threshold, get_mcpchecker_bin
 from mcp_sonar.suite.registry import Suite
 from mcp_sonar.target import ConnectedTarget
+from mcp_sonar.tool_result import outcome_from_exception
 
 _lens_tool_cache: dict[str, list[dict]] = {}
+
+_ONE_SHOT_SUITES = frozenset({"mcp-lens", "mcp-context", "agentic-mcp"})
+_ONE_SHOT_TOOLS = frozenset(
+    {
+        AGENTIC_MCPCHECKER_TOOL,
+        CONTEXT_STATIC_TOOL,
+        CONTEXT_LLM_TOOL,
+        LENS_STATIC_TOOL,
+        LENS_LLM_TOOL,
+    }
+)
+
+
+def _repeat_counts(suite_id: str, warmup: int, iterations: int) -> tuple[int, int]:
+    """Lens, context, and agentic evals are one result, not a latency sample."""
+    if suite_id in _ONE_SHOT_SUITES:
+        return 0, 1
+    if iterations < 1:
+        raise ValueError("iterations must be at least 1")
+    if warmup < 0:
+        raise ValueError("warmup must be non-negative")
+    return warmup, iterations
 
 
 def _scenario_detail(outcome: Any, *, include_all_responses: bool) -> str | None:
@@ -210,9 +233,12 @@ async def _invoke_resolved(target: ConnectedTarget, resolved: ResolvedStep) -> A
     if resolved.tool_name == LENS_LLM_TOOL:
         return await _invoke_mcp_lens(target, "llm")
     if resolved.tool_name == "__list_tools__":
-        names = await target.list_tools()
         from mcp_sonar.core.types import ToolOutcome  # noqa: PLC0415
 
+        try:
+            names = await target.list_tools()
+        except Exception as exc:  # noqa: BLE001 — same as call_tool: record the failure
+            return outcome_from_exception("__list_tools__", {}, exc)
         text = "\n".join(names)
         return ToolOutcome(
             tool_name="__list_tools__",
@@ -253,6 +279,13 @@ async def run_scenario_on_target(
             skip_reason=resolved.skip_reason,
         )
 
+    if resolved.tool_name in _ONE_SHOT_TOOLS:
+        warmup, iterations = 0, 1
+    elif iterations < 1:
+        raise ValueError("iterations must be at least 1")
+    elif warmup < 0:
+        raise ValueError("warmup must be non-negative")
+
     durations: list[float] = []
     successes = 0
     last_outcome = None
@@ -273,7 +306,7 @@ async def run_scenario_on_target(
     if not skip_functional and last_outcome is not None:
         functional_pass, functional_message = step.check(last_outcome)
 
-    measured = max(iterations, 1)
+    measured = iterations
     return ScenarioRunResult(
         scenario_id=step_id,
         target_name=target.name,
@@ -298,6 +331,7 @@ async def run_suite_on_target(
 ) -> SingleTargetReport:
     if suite.id == "mcp-lens":
         clear_lens_tool_cache()
+    warmup, iterations = _repeat_counts(suite.id, warmup, iterations)
     report = SingleTargetReport(
         suite_id=suite.id,
         target_name=target.name,
@@ -334,6 +368,7 @@ async def compare_targets(
 ) -> CompareReport:
     if suite.id == "mcp-lens":
         clear_lens_tool_cache()
+    warmup, iterations = _repeat_counts(suite.id, warmup, iterations)
     report = CompareReport(
         suite_id=suite.id,
         left_target=left.name,

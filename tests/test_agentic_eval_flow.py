@@ -11,6 +11,7 @@ from mcp_sonar.config import StdioTransportConfig, TargetConfig
 from mcp_sonar.core.types import ToolOutcome
 from mcp_sonar.integrations.agentic_eval_flow.aggregate import aggregate_mcpchecker_output
 from mcp_sonar.integrations.agentic_eval_flow.pack import mcp_endpoint_from_target
+from mcp_sonar.integrations.agentic_eval_flow.runner import _extract_json_blob
 from mcp_sonar.suite.registry import get_suite
 from mcp_sonar.transport import TransportInfo
 
@@ -53,6 +54,11 @@ class _FakeTarget:
     name: str
     config: TargetConfig
     transport: TransportInfo
+
+
+def test_extract_json_blob_uses_the_last_object() -> None:
+    raw = 'note {skipped}\n{"results": [{"taskName": "a", "taskPassed": true}]}\n'
+    assert _extract_json_blob(raw)["results"][0]["taskName"] == "a"
 
 
 def test_mcp_endpoint_requires_streamable_http() -> None:

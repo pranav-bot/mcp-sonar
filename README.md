@@ -5,7 +5,7 @@ Open-source toolkit to **benchmark**, **compare**, and **interact** with [Model 
 - **One server:** run a suite and collect latency + payload stats  
 - **Two servers:** same suite, side-by-side comparison  
 - **Ad hoc:** list/describe/call tools, inspect server info, list resources/prompts (CLI, no LLM)  
-- **Agent:** send a prompt to an LLM wired to an MCP server; see each tool call and the final answer (`sonar agent run`)  
+- **Agent:** send a prompt to an LLM wired to an MCP server; see each tool call and the final answer (`sonar agent run`, or `sonar agent batch` for many prompts)  
 - **Extensible:** drop YAML suites under `config/suites/`, or add Python suites in `src/mcp_sonar/suite/`
 
 Transports: **stdio** (subprocess) and **streamable HTTP** (with optional bearer token). Every CLI command and benchmark report shows which transport and endpoint you are using (stdio vs streamable HTTP are always labeled explicitly).
@@ -32,6 +32,8 @@ Each target is a named MCP endpoint:
 | `env` | Extra env vars for stdio subprocesses (`${VAR}` expansion supported) |
 
 ## Suites
+
+`mcp-lens`, `mcp-context`, and `agentic-mcp` run once per command. `--warmup` and `--iterations` apply to tool suites and `mcp-load`.
 
 **Built-in:** `mcp-smoke` — `tools/list` via `__list_tools__`.
 
@@ -86,12 +88,11 @@ Copy `config/llm.example.json` to `config/llm.json` (or `llm.json` in the projec
 | `openai` | `uv sync --extra llm-openai` |
 | `vertexai` (Gemini) | `uv sync --extra llm-vertex` |
 | `anthropic-vertex` | `uv sync --extra llm-anthropic-vertex` |
-| `maas` | httpx only; OpenAI-compatible MaaS (`MAAS_BASE_URL`, `MAAS_API_KEY`). Set **`rate_limit_per_minute`** to match your portal tier (client-side throttle): sandbox **10** req/min per model, personal **20**, enterprise per assigned tier. Omit to skip client-side throttling. |
-| `models-corps` | Alias for `maas` (legacy config name). |
+| `maas` | httpx only; OpenAI-compatible endpoint (`MAAS_BASE_URL`, `MAAS_API_KEY`). Set **`rate_limit_per_minute`** to your account limit. Omit to skip client-side throttling. |
 
 ```bash
 sonar llm list --config config/llm.json
-sonar llm models --config config/llm.json --name maas-sandbox   # VPN + key
+sonar llm models --config config/llm.json --name maas
 export MCP_SONAR_LLM_CONFIG=config/llm.json   # optional override
 ```
 
@@ -132,6 +133,12 @@ sonar list-suites --config config/targets.yaml
 sonar agent run --config config/targets.yaml --target everything-stdio \
   --prompt "Call echo with message hello and tell me what came back" --format json
 
+# One skill per MCP server: `.cursor/skills/mcp-bulk-tests` writes the YAML below.
+# It does not fill argument gaps from the tool schema.
+sonar tools batch --config config/targets.yaml --file calls.batch.yaml
+sonar agent batch --config config/targets.yaml --target everything-stdio \
+  --file prompts.yaml
+
 # Interact (no LLM — direct MCP tool calls)
 sonar tools list --config config/targets.yaml --target everything-stdio
 sonar tools describe --config config/targets.yaml --target everything-stdio --tool echo
@@ -145,13 +152,13 @@ sonar tools call --config config/targets.yaml --target everything-stdio \
   --tool echo --args '{"message":"hello"}'
 
 # Typed input form (YAML): generate, edit, invoke
-sonar tools template --config config/targets.yaml --target local-http \
-  --tool explore_schema -o explore_schema.input.yaml
-# edit explore_schema.input.yaml, then:
-sonar tools invoke --config config/targets.yaml --args-file explore_schema.input.yaml
+sonar tools template --config config/targets.yaml --target everything-stdio \
+  --tool echo -o echo.input.yaml
+# edit echo.input.yaml, then:
+sonar tools invoke --config config/targets.yaml --args-file echo.input.yaml
 
 # Bulk calls from a file
-sonar tools batch-template --tool explore_schema --target local-http -o calls.batch.yaml
+sonar tools batch-template --tool echo --target everything-stdio -o calls.batch.yaml
 sonar tools batch --config config/targets.yaml --file calls.batch.yaml
 
 # Shorthand: list-tools, template, invoke, call, batch, …

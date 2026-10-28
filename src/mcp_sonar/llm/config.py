@@ -72,7 +72,7 @@ def summarize_configs(data: dict[str, Any] | None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for name, cfg in sorted(data.get("configs", {}).items()):
         provider = str(cfg.get("provider", ""))
-        maas_like = provider in ("maas", "models-corps")
+        maas_like = provider == "maas"
         has_creds = bool(
             cfg.get("api_key")
             or cfg.get("project")

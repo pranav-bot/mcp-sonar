@@ -10,9 +10,6 @@ import httpx
 logger = logging.getLogger(__name__)
 
 MAAS_PROVIDER = "maas"
-# MaaS sandbox tier: 10 requests/minute per model (set rate_limit_per_minute in llm.json).
-# Personal tier is 20 req/min; enterprise varies — always match your portal Settings.
-MAAS_SANDBOX_RATE_LIMIT = 10
 
 
 def coerce_tls_verify(value: Any) -> bool | str:
@@ -97,10 +94,10 @@ def _parse_assistant_text(payload: dict[str, Any]) -> str:
 
 
 class MaasAdapter:
-    """Models.corp MaaS — OpenAI-compatible ``/v1/chat/completions`` (Bearer auth).
+    """OpenAI-compatible chat completions with bearer auth.
 
-    Configure ``base_url`` (e.g. ``https://…/oai/v1``) and API key via ``llm.json``
-    ``*_env`` fields. List models with :meth:`list_model_ids`.
+    Configure ``base_url`` and the API key via ``llm.json`` ``*_env`` fields.
+    List models with :meth:`list_model_ids`.
     """
 
     def __init__(
@@ -136,14 +133,14 @@ class MaasAdapter:
         except httpx.ConnectError as err:
             if self._verify is True and "certificate" in str(err).lower():
                 raise RuntimeError(
-                    f"{err}\n\nSet MAAS_VERIFY_SSL=false (or MODELS_CORPS_VERIFY_SSL) in local/.env "
-                    "if your environment uses an internal CA, or set verify_ssl_env in llm.json."
+                    f"{err}\n\nSet MAAS_VERIFY_SSL=false in local/.env "
+                    "if your environment uses a private CA, or set verify_ssl_env in llm.json."
                 ) from err
             raise
         if response.status_code == 429:
             raise RuntimeError(
-                "MaaS rate limit exceeded (HTTP 429). Match rate_limit_per_minute in llm.json to your "
-                "portal tier (sandbox: 10 req/min per model, personal: 20) and retry with backoff."
+                "Rate limit exceeded (HTTP 429). Set rate_limit_per_minute in llm.json "
+                "to your account limit and retry."
             )
         if response.status_code >= 400:
             raise RuntimeError(f"MaaS HTTP {response.status_code}: {response.text[:500]}")

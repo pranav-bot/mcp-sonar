@@ -58,13 +58,13 @@ def run_llm_list(config_path: Path | None, fmt: str) -> None:
 
 def _ssl_connect_hint() -> str:
     return (
-        "TLS verify failed (common on corporate gateways). Set MAAS_VERIFY_SSL=false or "
-        "MODELS_CORPS_VERIFY_SSL=false in local/.env, or point verify_ssl_env at your CA bundle."
+        "TLS verify failed. Set MAAS_VERIFY_SSL=false in local/.env, "
+        "or point verify_ssl_env at your CA bundle."
     )
 
 
 def run_llm_models(config_path: Path | None, config_name: str | None) -> None:
-    """Call MaaS GET /models for a named llm.json entry (maas or models-corps)."""
+    """Call GET /models for a named maas entry in llm.json."""
 
     load_local_dotenv()
     data = load_llm_file(config_path)
@@ -84,7 +84,7 @@ def run_llm_models(config_path: Path | None, config_name: str | None) -> None:
     if not callable(list_fn):
         raise click.ClickException(
             f"Config '{name}' does not use MaaS (no list_model_ids). "
-            "Use a maas or models-corps provider entry."
+            "Use a maas provider entry."
         )
     import asyncio
 

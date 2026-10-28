@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from mcp_sonar.llm.adapters.maas import (
-    MAAS_SANDBOX_RATE_LIMIT,
     coerce_tls_verify,
     maas_chat_completions_url,
     maas_models_url,
@@ -14,20 +13,13 @@ from mcp_sonar.llm.adapters.maas import (
 )
 from mcp_sonar.llm.config import load_llm_file
 from mcp_sonar.llm.rate_limit import MinuteRateLimiter
-from mcp_sonar.llm.registry import (
-    MODELS_CORPS_SANDBOX_RATE_LIMIT,
-    _resolve_maas_verify,
-    build_adapter,
-)
+from mcp_sonar.llm.registry import _resolve_maas_verify, build_adapter
 
 
 def test_maas_urls() -> None:
-    base = "https://models.corp.redhat.com/oai/v1"
-    assert maas_models_url(base) == "https://models.corp.redhat.com/oai/v1/models"
-    assert (
-        maas_chat_completions_url(base)
-        == "https://models.corp.redhat.com/oai/v1/chat/completions"
-    )
+    base = "https://llm.example.com/v1"
+    assert maas_models_url(base) == "https://llm.example.com/v1/models"
+    assert maas_chat_completions_url(base) == "https://llm.example.com/v1/chat/completions"
 
 
 def test_mcp_tools_to_openai() -> None:
@@ -37,9 +29,8 @@ def test_mcp_tools_to_openai() -> None:
     assert out[0]["function"]["name"] == "ping"
 
 
-def test_resolve_maas_verify_legacy_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("MAAS_VERIFY_SSL", raising=False)
-    monkeypatch.setenv("MODELS_CORPS_VERIFY_SSL", "false")
+def test_resolve_maas_verify_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAAS_VERIFY_SSL", "false")
     assert _resolve_maas_verify({}) is False
 
 
@@ -63,16 +54,16 @@ async def test_minute_rate_limiter_waits_for_slot() -> None:
 
 def test_load_llm_file_resolves_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TEST_LLM_KEY", "secret")
-    monkeypatch.setenv("TEST_MAAS_URL", "https://models.corp.redhat.com/oai/v1")
+    monkeypatch.setenv("TEST_MAAS_URL", "https://llm.example.com/v1")
     path = tmp_path / "llm.json"
     path.write_text(
         json.dumps(
             {
-                "default": "corp",
+                "default": "gateway",
                 "configs": {
-                    "corp": {
+                    "gateway": {
                         "provider": "maas",
-                        "model": "Qwen3-14B",
+                        "model": "demo-model",
                         "api_key_env": "TEST_LLM_KEY",
                         "base_url_env": "TEST_MAAS_URL",
                         "rate_limit_per_minute": 10,
@@ -84,9 +75,9 @@ def test_load_llm_file_resolves_env(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     )
     data = load_llm_file(path)
     assert data is not None
-    cfg = data["configs"]["corp"]
+    cfg = data["configs"]["gateway"]
     assert cfg["api_key"] == "secret"
-    assert cfg["base_url"] == "https://models.corp.redhat.com/oai/v1"
+    assert cfg["base_url"] == "https://llm.example.com/v1"
     assert cfg["rate_limit_per_minute"] == 10
 
 
@@ -94,9 +85,9 @@ def test_build_adapter_maas_wraps_rate_limit_when_configured() -> None:
     adapter = build_adapter(
         {
             "provider": "maas",
-            "model": "Qwen3-14B",
+            "model": "demo-model",
             "api_key": "k",
-            "base_url": "https://models.corp.redhat.com/oai/v1",
+            "base_url": "https://llm.example.com/v1",
             "rate_limit_per_minute": 10,
         }
     )
@@ -110,9 +101,9 @@ def test_build_adapter_maas_skips_rate_limit_when_omitted() -> None:
     adapter = build_adapter(
         {
             "provider": "maas",
-            "model": "Qwen3-14B",
+            "model": "demo-model",
             "api_key": "k",
-            "base_url": "https://models.corp.redhat.com/oai/v1",
+            "base_url": "https://llm.example.com/v1",
         }
     )
     from mcp_sonar.llm.adapters.maas import MaasAdapter
@@ -122,14 +113,8 @@ def test_build_adapter_maas_skips_rate_limit_when_omitted() -> None:
     assert not isinstance(adapter, RateLimitedAdapter)
 
 
-def test_maas_sandbox_rate_limit_constants() -> None:
-    assert MAAS_SANDBOX_RATE_LIMIT == 10
-    assert MODELS_CORPS_SANDBOX_RATE_LIMIT == 10
-
-
 def test_build_adapter_requires_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MAAS_BASE_URL", raising=False)
-    monkeypatch.delenv("MODELS_CORPS_BASE_URL", raising=False)
     with pytest.raises(ValueError, match="base_url"):
         build_adapter(
             {

@@ -190,12 +190,18 @@ Run an LLM against an MCP target: the model may call tools in a loop until it
 answers. Each tool invocation is recorded (name, arguments, result).
 
 Requires llm.json (or MCP_SONAR_LLM_CONFIG). Uses the same adapters as mcp-lens
-and mcp-context (Anthropic, OpenAI, Vertex, MaaS / models-corps).
+and mcp-context (Anthropic, OpenAI, Vertex, or an OpenAI-compatible maas endpoint).
 
 Examples:
-  sonar agent run --target my-server --prompt "List CVEs and summarize"
+  sonar agent run --target my-server --prompt "Call echo and tell me what came back"
   sonar agent run --target my-server --prompt-file task.txt --format json
+  sonar agent batch --target my-server --file prompts.yaml --format json
 """
+
+AGENT_BATCH_FILE_HELP = (
+    "YAML or JSON file: optional top-level target, and prompts: a non-empty list of strings. "
+    "One agent run per prompt."
+)
 
 AGENT_MAX_STEPS_HELP = "Maximum LLM tool-selection rounds before forcing a final answer (default: 8)."
 
